@@ -12,6 +12,7 @@ import {
   Parcela,
   Empresa,
   ParcelaStatus,
+  Aquisicao,
 } from '@/types'
 import {
   differenceInDays,
@@ -60,7 +61,16 @@ const INITIAL_MOTOS: Moto[] = [
     status: 'estoque',
     imagem: 'https://img.usecurling.com/p/300/200?q=honda%20cg%20160&color=red',
     kmAtual: 0,
-    consignacao: false,
+    historicoAquisicao: [
+      {
+        id: 'aq1',
+        data: '2024-01-01',
+        valor: 15000,
+        vendedor: 'Honda Factory',
+        km: 0,
+        consignacao: false,
+      },
+    ],
   },
   {
     id: '2',
@@ -72,10 +82,16 @@ const INITIAL_MOTOS: Moto[] = [
     status: 'estoque',
     imagem: 'https://img.usecurling.com/p/300/200?q=yamaha%20mt03&color=blue',
     kmAtual: 5000,
-    compra_vendedor: 'José da Silva',
-    compra_valor: 28000,
-    compra_data: '2023-12-01',
-    consignacao: true,
+    historicoAquisicao: [
+      {
+        id: 'aq2',
+        data: '2023-12-01',
+        valor: 28000,
+        vendedor: 'José da Silva',
+        km: 5000,
+        consignacao: true,
+      },
+    ],
   },
   {
     id: '3',
@@ -88,7 +104,16 @@ const INITIAL_MOTOS: Moto[] = [
     placa: 'ABC-1234',
     imagem: 'https://img.usecurling.com/p/300/200?q=honda%20cb500x&color=green',
     kmAtual: 12000,
-    consignacao: false,
+    historicoAquisicao: [
+      {
+        id: 'aq3',
+        data: '2023-11-15',
+        valor: 38000,
+        vendedor: 'Leilão SP',
+        km: 11000,
+        consignacao: false,
+      },
+    ],
   },
 ]
 
@@ -135,6 +160,7 @@ const INITIAL_FINANCIAMENTOS: Financiamento[] = [
     quantidadeParcelas: 12,
     taxaJurosAtraso: 2,
     valorMultaAtraso: 50,
+    taxaFinanciamento: 0,
     status: 'ativo',
     parcelas: Array.from({ length: 12 }).map((_, i) => ({
       numero: i + 1,
@@ -221,6 +247,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       id: Math.random().toString(36).substr(2, 9),
       status: 'estoque',
       imagem: `https://img.usecurling.com/p/300/200?q=${motoData.modelo.split(' ').join('%20')}`,
+      historicoAquisicao: motoData.historicoAquisicao || [],
     }
     setMotos([...motos, newMoto])
     toast({ title: 'Sucesso', description: 'Moto adicionada ao estoque!' })
@@ -306,9 +333,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const updateFinanciamento = (id: string, data: Partial<Financiamento>) => {
-    setFinanciamentos((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ...data } : f)),
-    )
+    setFinanciamentos((prev) => {
+      const oldFinanciamento = prev.find((f) => f.id === id)
+      if (!oldFinanciamento) return prev
+
+      // Check if Moto changed
+      if (data.motoId && data.motoId !== oldFinanciamento.motoId) {
+        // Swap Status
+        setMotos((currentMotos) =>
+          currentMotos.map((m) => {
+            if (m.id === oldFinanciamento.motoId)
+              return { ...m, status: 'estoque' }
+            if (m.id === data.motoId) return { ...m, status: 'vendida' }
+            return m
+          }),
+        )
+      }
+
+      return prev.map((f) => (f.id === id ? { ...f, ...data } : f))
+    })
     toast({ title: 'Sucesso', description: 'Financiamento atualizado.' })
   }
 

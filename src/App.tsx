@@ -46,6 +46,10 @@ const App = () => (
                 element={<FinanciamentoForm />}
               />
               <Route
+                path="/financiamentos/:id/editar"
+                element={<FinanciamentoForm />}
+              />
+              <Route
                 path="/financiamentos/:id"
                 element={<FinanciamentoDetails />}
               />

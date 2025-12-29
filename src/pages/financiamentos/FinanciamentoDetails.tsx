@@ -30,6 +30,7 @@ import {
   Bike as BikeIcon,
   Printer,
   Edit2,
+  FileEdit,
 } from 'lucide-react'
 
 export default function FinanciamentoDetails() {
@@ -139,6 +140,12 @@ export default function FinanciamentoDetails() {
           </h1>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to={`/financiamentos/${id}/editar`}>
+              <FileEdit className="mr-2 h-4 w-4" />
+              Editar Contrato
+            </Link>
+          </Button>
           <Button variant="secondary" asChild>
             <Link to={`/financiamentos/${id}/extrato`}>
               <Printer className="mr-2 h-4 w-4" />
@@ -267,7 +274,7 @@ export default function FinanciamentoDetails() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEditClick(parcela)}
-                          title="Editar Valor"
+                          title="Editar Valor Individual"
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>

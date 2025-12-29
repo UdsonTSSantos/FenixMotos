@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -27,6 +27,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { parseCurrency, formatCurrency } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Plus, Trash2 } from 'lucide-react'
+
+const aquisicaoSchema = z.object({
+  id: z.string(),
+  data: z.string().min(1, 'Data é obrigatória'),
+  valor: z.string().min(1, 'Valor é obrigatório'),
+  vendedor: z.string().min(1, 'Vendedor é obrigatório'),
+  km: z.coerce.number().min(0, 'KM não pode ser negativo'),
+  consignacao: z.boolean().default(false),
+})
 
 const formSchema = z.object({
   fabricante: z.string().min(1, 'Selecione um fabricante'),
@@ -36,13 +54,7 @@ const formSchema = z.object({
   placa: z.string().optional(),
   valor: z.string().min(1, 'Valor é obrigatório'),
   kmAtual: z.coerce.number().min(0, 'KM não pode ser negativo'),
-
-  // Purchase Info
-  compra_vendedor: z.string().optional(),
-  compra_valor: z.string().optional(),
-  compra_data: z.string().optional(),
-  compra_km: z.coerce.number().optional(),
-  consignacao: z.boolean().default(false),
+  historicoAquisicao: z.array(aquisicaoSchema).default([]),
 })
 
 export default function MotoForm() {
@@ -63,16 +75,22 @@ export default function MotoForm() {
       placa: '',
       valor: '',
       kmAtual: 0,
-      compra_vendedor: '',
-      compra_valor: '',
-      compra_data: '',
-      compra_km: 0,
-      consignacao: false,
+      historicoAquisicao: [],
     },
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'historicoAquisicao',
   })
 
   useEffect(() => {
     if (isEditing && existingMoto) {
+      const formattedHistory = existingMoto.historicoAquisicao.map((h) => ({
+        ...h,
+        valor: formatCurrency(h.valor),
+      }))
+
       form.reset({
         fabricante: existingMoto.fabricante,
         modelo: existingMoto.modelo,
@@ -81,27 +99,32 @@ export default function MotoForm() {
         placa: existingMoto.placa || '',
         valor: formatCurrency(existingMoto.valor),
         kmAtual: existingMoto.kmAtual || 0,
-        compra_vendedor: existingMoto.compra_vendedor || '',
-        compra_valor: existingMoto.compra_valor
-          ? formatCurrency(existingMoto.compra_valor)
-          : '',
-        compra_data: existingMoto.compra_data || '',
-        compra_km: existingMoto.compra_km || 0,
-        consignacao: existingMoto.consignacao || false,
+        historicoAquisicao: formattedHistory,
       })
     }
   }, [isEditing, existingMoto, form])
 
+  // Logic to update KM based on latest acquisition if wanted, but user might want manual override.
+  // We can listen to history changes, but it might be annoying.
+  // The user requirement says: "use the data from the most recent acquisition entry to populate the current status, cost, and mileage"
+  // Status and Cost are not fully in history (Value is Cost).
+  // Let's implement an effect to update KM when history changes? No, let's let user decide.
+
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const rawValue = parseCurrency(values.valor)
-    const rawCompraValor = values.compra_valor
-      ? parseCurrency(values.compra_valor)
-      : undefined
+    const processedHistory = values.historicoAquisicao.map((h) => ({
+      ...h,
+      valor: parseCurrency(h.valor),
+    }))
+
+    // Determine KM from latest history if exists and higher?
+    // User requested populate logic.
+    // We'll trust the form value for kmAtual, but maybe user updated it.
 
     const motoData = {
       ...values,
       valor: rawValue,
-      compra_valor: rawCompraValor,
+      historicoAquisicao: processedHistory,
     }
 
     if (isEditing && id) {
@@ -112,14 +135,23 @@ export default function MotoForm() {
     navigate('/motos')
   }
 
-  // Value formatting on change
   const handleCurrencyChange =
-    (fieldName: 'valor' | 'compra_valor') =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (fieldName: any) => (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = e.target.value.replace(/\D/g, '')
       const number = Number(raw) / 100
-      form.setValue(fieldName, formatCurrency(number))
+      fieldName.onChange(formatCurrency(number))
     }
+
+  const addAquisicao = () => {
+    append({
+      id: Math.random().toString(36).substr(2, 9),
+      data: new Date().toISOString().split('T')[0],
+      valor: '',
+      vendedor: '',
+      km: 0,
+      consignacao: false,
+    })
+  }
 
   const isSold = existingMoto?.status === 'vendida'
 
@@ -229,9 +261,6 @@ export default function MotoForm() {
                             maxLength={8}
                           />
                         </FormControl>
-                        <FormDescription>
-                          Deixe em branco se for moto 0km.
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -260,34 +289,11 @@ export default function MotoForm() {
                         <FormControl>
                           <Input
                             {...field}
-                            onChange={handleCurrencyChange('valor')}
+                            onChange={handleCurrencyChange(field)}
                             disabled={isSold}
                           />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="consignacao"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">
-                            Veículo em Consignação
-                          </FormLabel>
-                          <FormDescription>
-                            Marque se a moto pertence a terceiros.
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
                       </FormItem>
                     )}
                   />
@@ -297,68 +303,114 @@ export default function MotoForm() {
               <Separator />
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">
-                  Informações de Compra / Entrada
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="compra_vendedor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Vendedor / Fornecedor</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="De quem comprou" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">
+                    Histórico de Aquisições
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addAquisicao}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Adicionar Entrada
+                  </Button>
+                </div>
 
-                  <FormField
-                    control={form.control}
-                    name="compra_valor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor de Compra</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            onChange={handleCurrencyChange('compra_valor')}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="compra_data"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data de Compra</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="compra_km"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>KM na Compra</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Vendedor/Origem</TableHead>
+                        <TableHead>Valor Custo</TableHead>
+                        <TableHead>KM</TableHead>
+                        <TableHead>Consignação</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fields.map((field, index) => (
+                        <TableRow key={field.id}>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`historicoAquisicao.${index}.data`}
+                              render={({ field }) => (
+                                <Input type="date" {...field} />
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`historicoAquisicao.${index}.vendedor`}
+                              render={({ field }) => (
+                                <Input placeholder="Nome" {...field} />
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`historicoAquisicao.${index}.valor`}
+                              render={({ field }) => (
+                                <Input
+                                  {...field}
+                                  onChange={handleCurrencyChange(field)}
+                                  placeholder="R$ 0,00"
+                                />
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`historicoAquisicao.${index}.km`}
+                              render={({ field }) => (
+                                <Input
+                                  type="number"
+                                  placeholder="KM"
+                                  {...field}
+                                />
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`historicoAquisicao.${index}.consignacao`}
+                              render={({ field }) => (
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => remove(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {fields.length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={6}
+                            className="text-center text-muted-foreground h-24"
+                          >
+                            Nenhum registro de aquisição.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
 

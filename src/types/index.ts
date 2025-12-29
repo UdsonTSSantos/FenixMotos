@@ -1,5 +1,14 @@
 export type MotoStatus = 'estoque' | 'vendida'
 
+export interface Aquisicao {
+  id: string
+  data: string // ISO Date
+  valor: number
+  vendedor: string
+  km: number
+  consignacao: boolean
+}
+
 export interface Moto {
   id: string
   modelo: string
@@ -10,11 +19,15 @@ export interface Moto {
   valor: number
   status: MotoStatus
   imagem?: string
-  // Enhanced Inventory Tracking
   kmAtual?: number
+  // Historico de Aquisicoes replaces static fields
+  historicoAquisicao: Aquisicao[]
+
+  // Deprecated fields kept optional for backward compatibility if needed,
+  // but logic should rely on historicoAquisicao
   compra_vendedor?: string
   compra_valor?: number
-  compra_data?: string // ISO Date
+  compra_data?: string
   compra_km?: number
   consignacao?: boolean
 }
@@ -56,8 +69,9 @@ export interface Financiamento {
   valorEntrada: number
   valorFinanciado: number
   quantidadeParcelas: number
-  taxaJurosAtraso: number // Percentage
-  valorMultaAtraso: number // Fixed value
+  taxaJurosAtraso: number // Percentage per day/month for delay
+  valorMultaAtraso: number // Fixed value for delay
+  taxaFinanciamento?: number // New: Percentage added to base financing (monthly or total)
   status: FinanciamentoStatus
   parcelas: Parcela[]
 }
