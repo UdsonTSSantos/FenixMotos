@@ -12,6 +12,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar'
 import { Link, useLocation } from 'react-router-dom'
+import { useData } from '@/context/DataContext'
 
 const items = [
   {
@@ -43,15 +44,27 @@ const items = [
 
 export function AppSidebar() {
   const location = useLocation()
+  const { empresa } = useData()
 
   return (
     <Sidebar>
       <SidebarHeader className="p-4 border-b">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Bike className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-lg tracking-tight">MotoFin</span>
+          {empresa.logo && (
+            <img
+              src={empresa.logo}
+              alt="Logo"
+              className="w-8 h-8 object-contain rounded-md"
+            />
+          )}
+          {!empresa.logo && (
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Bike className="w-5 h-5 text-primary-foreground" />
+            </div>
+          )}
+          <span className="font-bold text-lg tracking-tight truncate">
+            {empresa.nome || 'MotoFin'}
+          </span>
         </div>
       </SidebarHeader>
       <SidebarContent>

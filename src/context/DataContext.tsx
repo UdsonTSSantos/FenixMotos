@@ -125,6 +125,8 @@ const INITIAL_CLIENTES: Cliente[] = [
     telefone: '(11) 98765-4321',
     email: 'joao@email.com',
     endereco: 'Rua A, 123',
+    bairro: 'Centro',
+    complemento: 'Apto 101',
     cidade: 'São Paulo',
     estado: 'SP',
     cep: '01234-567',
@@ -139,6 +141,8 @@ const INITIAL_CLIENTES: Cliente[] = [
     telefone: '(21) 91234-5678',
     email: 'maria@email.com',
     endereco: 'Av B, 456',
+    bairro: 'Copacabana',
+    complemento: '',
     cidade: 'Rio de Janeiro',
     estado: 'RJ',
     cep: '20000-000',
@@ -185,6 +189,11 @@ const INITIAL_EMPRESA: Empresa = {
   telefone: '(11) 3333-4444',
   email: 'contato@motofin.com',
   logo: 'https://img.usecurling.com/i?q=motorcycle&shape=outline&color=black',
+  instagram: '',
+  facebook: '',
+  x: '',
+  tiktok: '',
+  website: '',
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -246,7 +255,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...motoData,
       id: Math.random().toString(36).substr(2, 9),
       status: 'estoque',
-      imagem: `https://img.usecurling.com/p/300/200?q=${motoData.modelo.split(' ').join('%20')}`,
+      imagem:
+        motoData.imagem ||
+        `https://img.usecurling.com/p/300/200?q=${motoData.modelo.split(' ').join('%20')}`,
       historicoAquisicao: motoData.historicoAquisicao || [],
     }
     setMotos([...motos, newMoto])

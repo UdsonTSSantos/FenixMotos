@@ -43,6 +43,8 @@ const formSchema = z.object({
   telefone: z.string().min(14, 'Telefone inválido'),
   email: z.string().email('Email inválido'),
   endereco: z.string().min(5, 'Endereço obrigatório'),
+  complemento: z.string().optional(),
+  bairro: z.string().optional(),
   cidade: z.string().min(2, 'Cidade obrigatória'),
   estado: z.string().length(2, 'Selecione um estado'),
   cep: z.string().min(9, 'CEP inválido'),
@@ -78,6 +80,8 @@ export default function ClienteForm() {
       telefone: '',
       email: '',
       endereco: '',
+      complemento: '',
+      bairro: '',
       cidade: '',
       estado: '',
       cep: '',
@@ -97,6 +101,8 @@ export default function ClienteForm() {
     if (isEditing && existing) {
       form.reset({
         ...existing,
+        complemento: existing.complemento || '',
+        bairro: existing.bairro || '',
         prof_salario: existing.prof_salario
           ? formatCurrency(existing.prof_salario)
           : '',
@@ -290,84 +296,113 @@ export default function ClienteForm() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="cep"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>CEP</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              onChange={handleCEP}
-                              maxLength={9}
-                              placeholder="00000-000"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="endereco"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Endereço</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Rua, Número, Bairro"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="cidade"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cidade</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="estado"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estado</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            value={field.value}
-                          >
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4 mt-2">
+                      <FormField
+                        control={form.control}
+                        name="cep"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>CEP</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="UF" />
-                              </SelectTrigger>
+                              <Input
+                                {...field}
+                                onChange={handleCEP}
+                                maxLength={9}
+                                placeholder="00000-000"
+                              />
                             </FormControl>
-                            <SelectContent>
-                              {ESTADOS_BR.map((uf) => (
-                                <SelectItem key={uf} value={uf}>
-                                  {uf}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="endereco"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Endereço (Rua, Número)</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Rua Exemplo, 123"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="complemento"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Complemento</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Apto, Bloco, etc."
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="bairro"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bairro</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="cidade"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Cidade</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="estado"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Estado</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              value={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="UF" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {ESTADOS_BR.map((uf) => (
+                                  <SelectItem key={uf} value={uf}>
+                                    {uf}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 </TabsContent>
 

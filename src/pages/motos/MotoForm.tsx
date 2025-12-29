@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
@@ -35,13 +35,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Upload } from 'lucide-react'
 
 const aquisicaoSchema = z.object({
   id: z.string(),
   data: z.string().min(1, 'Data é obrigatória'),
   valor: z.string().min(1, 'Valor é obrigatório'),
-  vendedor: z.string().min(1, 'Vendedor é obrigatório'),
+  vendedor: z.string().min(1, 'Selecione um cliente como vendedor'),
   km: z.coerce.number().min(0, 'KM não pode ser negativo'),
   consignacao: z.boolean().default(false),
 })
@@ -54,13 +54,17 @@ const formSchema = z.object({
   placa: z.string().optional(),
   valor: z.string().min(1, 'Valor é obrigatório'),
   kmAtual: z.coerce.number().min(0, 'KM não pode ser negativo'),
+  imagem: z.string().optional(),
   historicoAquisicao: z.array(aquisicaoSchema).default([]),
 })
 
 export default function MotoForm() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { motos, addMoto, updateMoto } = useData()
+  const { motos, addMoto, updateMoto, clientes } = useData()
+  const [imagePreview, setImagePreview] = useState<string | undefined>(
+    undefined,
+  )
 
   const isEditing = !!id
   const existingMoto = motos.find((m) => m.id === id)
@@ -75,6 +79,7 @@ export default function MotoForm() {
       placa: '',
       valor: '',
       kmAtual: 0,
+      imagem: '',
       historicoAquisicao: [],
     },
   })
@@ -99,16 +104,12 @@ export default function MotoForm() {
         placa: existingMoto.placa || '',
         valor: formatCurrency(existingMoto.valor),
         kmAtual: existingMoto.kmAtual || 0,
+        imagem: existingMoto.imagem,
         historicoAquisicao: formattedHistory,
       })
+      setImagePreview(existingMoto.imagem)
     }
   }, [isEditing, existingMoto, form])
-
-  // Logic to update KM based on latest acquisition if wanted, but user might want manual override.
-  // We can listen to history changes, but it might be annoying.
-  // The user requirement says: "use the data from the most recent acquisition entry to populate the current status, cost, and mileage"
-  // Status and Cost are not fully in history (Value is Cost).
-  // Let's implement an effect to update KM when history changes? No, let's let user decide.
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const rawValue = parseCurrency(values.valor)
@@ -117,13 +118,10 @@ export default function MotoForm() {
       valor: parseCurrency(h.valor),
     }))
 
-    // Determine KM from latest history if exists and higher?
-    // User requested populate logic.
-    // We'll trust the form value for kmAtual, but maybe user updated it.
-
     const motoData = {
       ...values,
       valor: rawValue,
+      imagem: imagePreview || values.imagem || '',
       historicoAquisicao: processedHistory,
     }
 
@@ -141,6 +139,19 @@ export default function MotoForm() {
       const number = Number(raw) / 100
       fieldName.onChange(formatCurrency(number))
     }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result as string
+        setImagePreview(result)
+        form.setValue('imagem', result, { shouldDirty: true })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const addAquisicao = () => {
     append({
@@ -167,6 +178,37 @@ export default function MotoForm() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Dados do Veículo</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Image Upload */}
+                  <div className="md:col-span-2 space-y-4">
+                    <FormLabel>Foto da Motocicleta</FormLabel>
+                    <div className="flex items-center gap-4">
+                      <div className="border-2 border-dashed rounded-lg p-2 w-48 h-32 flex items-center justify-center bg-muted/50 overflow-hidden">
+                        {imagePreview ? (
+                          <img
+                            src={imagePreview}
+                            alt="Moto Preview"
+                            className="w-full h-full object-cover rounded-md"
+                          />
+                        ) : (
+                          <span className="text-muted-foreground text-xs text-center flex flex-col items-center gap-1">
+                            <Upload className="h-4 w-4" /> Sem Foto
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="w-full max-w-sm"
+                          onChange={handleImageUpload}
+                        />
+                        <FormDescription>
+                          Envie uma foto do veículo (JPG, PNG).
+                        </FormDescription>
+                      </div>
+                    </div>
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="fabricante"
@@ -321,7 +363,9 @@ export default function MotoForm() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Data</TableHead>
-                        <TableHead>Vendedor/Origem</TableHead>
+                        <TableHead className="w-[200px]">
+                          Vendedor/Origem
+                        </TableHead>
                         <TableHead>Valor Custo</TableHead>
                         <TableHead>KM</TableHead>
                         <TableHead>Consignação</TableHead>
@@ -345,7 +389,36 @@ export default function MotoForm() {
                               control={form.control}
                               name={`historicoAquisicao.${index}.vendedor`}
                               render={({ field }) => (
-                                <Input placeholder="Nome" {...field} />
+                                <Select
+                                  onValueChange={field.onChange}
+                                  value={field.value}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Selecione" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {clientes.map((cliente) => (
+                                      <SelectItem
+                                        key={cliente.id}
+                                        value={cliente.nome}
+                                      >
+                                        {cliente.nome}
+                                      </SelectItem>
+                                    ))}
+                                    {/* Fallback for old records */}
+                                    {field.value &&
+                                      !clientes.some(
+                                        (c) => c.nome === field.value,
+                                      ) && (
+                                        <SelectItem value={field.value}>
+                                          {field.value}
+                                        </SelectItem>
+                                      )}
+                                  </SelectContent>
+                                </Select>
                               )}
                             />
                           </TableCell>

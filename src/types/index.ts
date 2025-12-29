@@ -42,6 +42,9 @@ export interface Cliente {
   cidade: string
   estado: string
   cep: string
+  // New Address Fields
+  complemento?: string
+  bairro?: string
   // Advanced Profiling
   rg?: string
   dataNascimento?: string // ISO Date
@@ -96,6 +99,12 @@ export interface Empresa {
   telefone: string
   email: string
   logo: string
+  // Social Media
+  instagram?: string
+  facebook?: string
+  x?: string
+  tiktok?: string
+  website?: string
 }
 
 export const FABRICANTES = [
