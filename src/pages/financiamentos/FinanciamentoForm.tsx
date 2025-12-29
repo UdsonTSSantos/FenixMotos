@@ -29,6 +29,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { parseCurrency, formatCurrency } from '@/lib/utils'
 
 const formSchema = z.object({
@@ -55,12 +56,11 @@ export default function FinanciamentoForm() {
       clienteId: '',
       valorEntrada: 'R$ 0,00',
       quantidadeParcelas: 12,
-      taxaJurosAtraso: 2.0, // 2%
+      taxaJurosAtraso: 2.0,
       valorMultaAtraso: 'R$ 50,00',
     },
   })
 
-  // Watch values for simulation
   const watchEntrada = form.watch('valorEntrada')
   const watchParcelas = form.watch('quantidadeParcelas')
 
