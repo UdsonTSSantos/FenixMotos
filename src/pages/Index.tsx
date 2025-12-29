@@ -1,6 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useData } from '@/context/DataContext'
-import { Bike, DollarSign, FileText, AlertTriangle } from 'lucide-react'
+import {
+  Bike,
+  DollarSign,
+  FileText,
+  AlertTriangle,
+  Building2,
+} from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import {
   Bar,
@@ -24,6 +30,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Link } from 'react-router-dom'
 
 export default function Index() {
   const { motos, financiamentos } = useData()
@@ -68,7 +76,14 @@ export default function Index() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <Button asChild variant="outline">
+          <Link to="/empresa">
+            <Building2 className="mr-2 h-4 w-4" /> Minha Empresa
+          </Link>
+        </Button>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

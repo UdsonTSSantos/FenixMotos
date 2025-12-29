@@ -19,29 +19,43 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   ArrowLeft,
-  Calendar,
   DollarSign,
   User,
   Bike as BikeIcon,
+  Printer,
+  Edit2,
 } from 'lucide-react'
-import { format } from 'date-fns'
 
 export default function FinanciamentoDetails() {
   const { id } = useParams()
-  const { financiamentos, clientes, motos, registerPayment } = useData()
+  const {
+    financiamentos,
+    clientes,
+    motos,
+    registerPayment,
+    updateFinanciamento,
+  } = useData()
+
+  // Payment Dialog State
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentDate, setPaymentDate] = useState(
     new Date().toISOString().split('T')[0],
   )
   const [selectedParcela, setSelectedParcela] = useState<number | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
+
+  // Edit Parcel Dialog State
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [newParcelValue, setNewParcelValue] = useState('')
+  const [editParcelaNumber, setEditParcelaNumber] = useState<number | null>(
+    null,
+  )
 
   const financiamento = financiamentos.find((f) => f.id === id)
 
@@ -56,7 +70,7 @@ export default function FinanciamentoDetails() {
     setSelectedParcela(parcela.numero)
     setPaymentAmount(formatCurrency(parcela.valorTotal))
     setPaymentDate(new Date().toISOString().split('T')[0])
-    setIsDialogOpen(true)
+    setIsPaymentDialogOpen(true)
   }
 
   const confirmPayment = () => {
@@ -67,7 +81,40 @@ export default function FinanciamentoDetails() {
         new Date(paymentDate).toISOString(),
         parseCurrency(paymentAmount),
       )
-      setIsDialogOpen(false)
+      setIsPaymentDialogOpen(false)
+    }
+  }
+
+  const handleEditClick = (parcela: any) => {
+    setEditParcelaNumber(parcela.numero)
+    setNewParcelValue(formatCurrency(parcela.valorOriginal))
+    setIsEditDialogOpen(true)
+  }
+
+  const confirmEdit = () => {
+    if (editParcelaNumber !== null) {
+      const newValue = parseCurrency(newParcelValue)
+      const updatedParcelas = financiamento.parcelas.map((p) => {
+        if (p.numero === editParcelaNumber) {
+          return {
+            ...p,
+            valorOriginal: newValue,
+            valorTotal: newValue + p.valorJuros + p.valorMulta,
+          }
+        }
+        return p
+      })
+
+      const newTotal =
+        updatedParcelas.reduce((acc, p) => acc + p.valorOriginal, 0) +
+        financiamento.valorEntrada
+
+      updateFinanciamento(financiamento.id, {
+        parcelas: updatedParcelas,
+        valorTotal: newTotal,
+        valorFinanciado: newTotal - financiamento.valorEntrada,
+      })
+      setIsEditDialogOpen(false)
     }
   }
 
@@ -80,15 +127,25 @@ export default function FinanciamentoDetails() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link to="/financiamentos">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold">
-          Detalhes do Contrato #{financiamento.id.toUpperCase()}
-        </h1>
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link to="/financiamentos">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold">
+            Contrato #{financiamento.id.toUpperCase()}
+          </h1>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="secondary" asChild>
+            <Link to={`/financiamentos/${id}/extrato`}>
+              <Printer className="mr-2 h-4 w-4" />
+              Gerar Extrato
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -161,7 +218,7 @@ export default function FinanciamentoDetails() {
                 <TableHead>Valor Total</TableHead>
                 <TableHead>Pagamento</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ação</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,14 +261,26 @@ export default function FinanciamentoDetails() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {parcela.status !== 'paga' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handlePaymentClick(parcela)}
-                      >
-                        Registrar Pagamento
-                      </Button>
-                    )}
+                    <div className="flex justify-end gap-2">
+                      {parcela.status !== 'paga' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditClick(parcela)}
+                          title="Editar Valor"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {parcela.status !== 'paga' && (
+                        <Button
+                          size="sm"
+                          onClick={() => handlePaymentClick(parcela)}
+                        >
+                          Pagar
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -220,7 +289,8 @@ export default function FinanciamentoDetails() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -261,6 +331,39 @@ export default function FinanciamentoDetails() {
           <DialogFooter>
             <Button type="submit" onClick={confirmPayment}>
               Confirmar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Parcel Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Parcela {editParcelaNumber}</DialogTitle>
+            <DialogDescription>
+              Alterar o valor original desta parcela. Isso recalculará o total.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-amount" className="text-right">
+                Novo Valor
+              </Label>
+              <Input
+                id="edit-amount"
+                value={newParcelValue}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '')
+                  setNewParcelValue(formatCurrency(Number(raw) / 100))
+                }}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="submit" onClick={confirmEdit}>
+              Salvar Alteração
             </Button>
           </DialogFooter>
         </DialogContent>

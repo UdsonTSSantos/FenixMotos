@@ -1,11 +1,4 @@
-import {
-  Bike,
-  Users,
-  FileText,
-  LayoutDashboard,
-  Settings,
-  LogOut,
-} from 'lucide-react'
+import { Bike, Users, FileText, LayoutDashboard, Building2 } from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +12,6 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar'
 import { Link, useLocation } from 'react-router-dom'
-import { cn } from '@/lib/utils'
 
 const items = [
   {
@@ -41,6 +33,11 @@ const items = [
     title: 'Financiamentos',
     url: '/financiamentos',
     icon: FileText,
+  },
+  {
+    title: 'Minha Empresa',
+    url: '/empresa',
+    icon: Building2,
   },
 ]
 

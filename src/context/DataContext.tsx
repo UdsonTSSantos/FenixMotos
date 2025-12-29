@@ -5,13 +5,20 @@ import React, {
   useEffect,
   ReactNode,
 } from 'react'
-import { Moto, Cliente, Financiamento, Parcela } from '@/types'
 import {
-  addMonths,
+  Moto,
+  Cliente,
+  Financiamento,
+  Parcela,
+  Empresa,
+  ParcelaStatus,
+} from '@/types'
+import {
   differenceInDays,
   isAfter,
   parseISO,
   startOfDay,
+  addMonths,
 } from 'date-fns'
 import { toast } from '@/hooks/use-toast'
 
@@ -19,6 +26,7 @@ interface DataContextType {
   motos: Moto[]
   clientes: Cliente[]
   financiamentos: Financiamento[]
+  empresa: Empresa
   addMoto: (moto: Omit<Moto, 'id' | 'status'>) => void
   updateMoto: (id: string, moto: Partial<Moto>) => void
   deleteMoto: (id: string) => void
@@ -27,6 +35,7 @@ interface DataContextType {
   addFinanciamento: (
     financiamento: Omit<Financiamento, 'id' | 'status' | 'parcelas'>,
   ) => void
+  updateFinanciamento: (id: string, data: Partial<Financiamento>) => void
   registerPayment: (
     financiamentoId: string,
     parcelaNumero: number,
@@ -34,6 +43,7 @@ interface DataContextType {
     valorPago: number,
   ) => void
   refreshPenalties: () => void
+  updateEmpresa: (data: Empresa) => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -49,6 +59,8 @@ const INITIAL_MOTOS: Moto[] = [
     valor: 18500,
     status: 'estoque',
     imagem: 'https://img.usecurling.com/p/300/200?q=honda%20cg%20160&color=red',
+    kmAtual: 0,
+    consignacao: false,
   },
   {
     id: '2',
@@ -59,6 +71,11 @@ const INITIAL_MOTOS: Moto[] = [
     valor: 32000,
     status: 'estoque',
     imagem: 'https://img.usecurling.com/p/300/200?q=yamaha%20mt03&color=blue',
+    kmAtual: 5000,
+    compra_vendedor: 'José da Silva',
+    compra_valor: 28000,
+    compra_data: '2023-12-01',
+    consignacao: true,
   },
   {
     id: '3',
@@ -70,6 +87,8 @@ const INITIAL_MOTOS: Moto[] = [
     status: 'vendida',
     placa: 'ABC-1234',
     imagem: 'https://img.usecurling.com/p/300/200?q=honda%20cb500x&color=green',
+    kmAtual: 12000,
+    consignacao: false,
   },
 ]
 
@@ -84,6 +103,9 @@ const INITIAL_CLIENTES: Cliente[] = [
     cidade: 'São Paulo',
     estado: 'SP',
     cep: '01234-567',
+    genero: 'masculino',
+    prof_empresa: 'Tech Solutions',
+    prof_cargo: 'Desenvolvedor',
   },
   {
     id: '2',
@@ -95,6 +117,9 @@ const INITIAL_CLIENTES: Cliente[] = [
     cidade: 'Rio de Janeiro',
     estado: 'RJ',
     cep: '20000-000',
+    genero: 'feminino',
+    prof_empresa: 'Loja de Roupas',
+    prof_cargo: 'Gerente',
   },
 ]
 
@@ -127,12 +152,22 @@ const INITIAL_FINANCIAMENTOS: Financiamento[] = [
   },
 ]
 
+const INITIAL_EMPRESA: Empresa = {
+  nome: 'MotoFin Dealership',
+  cnpj: '00.000.000/0000-00',
+  endereco: 'Av. das Motos, 1000 - Centro',
+  telefone: '(11) 3333-4444',
+  email: 'contato@motofin.com',
+  logo: 'https://img.usecurling.com/i?q=motorcycle&shape=outline&color=black',
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [motos, setMotos] = useState<Moto[]>(INITIAL_MOTOS)
   const [clientes, setClientes] = useState<Cliente[]>(INITIAL_CLIENTES)
   const [financiamentos, setFinanciamentos] = useState<Financiamento[]>(
     INITIAL_FINANCIAMENTOS,
   )
+  const [empresa, setEmpresa] = useState<Empresa>(INITIAL_EMPRESA)
 
   // Calculate penalties on mount and when needed
   const refreshPenalties = () => {
@@ -270,6 +305,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const updateFinanciamento = (id: string, data: Partial<Financiamento>) => {
+    setFinanciamentos((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, ...data } : f)),
+    )
+    toast({ title: 'Sucesso', description: 'Financiamento atualizado.' })
+  }
+
   const registerPayment = (
     financiamentoId: string,
     parcelaNumero: number,
@@ -307,20 +349,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const updateEmpresa = (data: Empresa) => {
+    setEmpresa(data)
+    toast({ title: 'Sucesso', description: 'Dados da empresa atualizados.' })
+  }
+
   return (
     <DataContext.Provider
       value={{
         motos,
         clientes,
         financiamentos,
+        empresa,
         addMoto,
         updateMoto,
         deleteMoto,
         addCliente,
         updateCliente,
         addFinanciamento,
+        updateFinanciamento,
         registerPayment,
         refreshPenalties,
+        updateEmpresa,
       }}
     >
       {children}

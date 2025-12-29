@@ -14,6 +14,8 @@ import ClienteForm from '@/pages/clientes/ClienteForm'
 import Financiamentos from '@/pages/financiamentos/Financiamentos'
 import FinanciamentoForm from '@/pages/financiamentos/FinanciamentoForm'
 import FinanciamentoDetails from '@/pages/financiamentos/FinanciamentoDetails'
+import FinanciamentoExtrato from '@/pages/financiamentos/FinanciamentoExtrato'
+import Empresa from '@/pages/empresa/Empresa'
 
 const App = () => (
   <BrowserRouter
@@ -27,6 +29,8 @@ const App = () => (
           <Routes>
             <Route element={<Layout />}>
               <Route path="/" element={<Index />} />
+
+              <Route path="/empresa" element={<Empresa />} />
 
               <Route path="/motos" element={<Motos />} />
               <Route path="/motos/nova" element={<MotoForm />} />
@@ -44,6 +48,10 @@ const App = () => (
               <Route
                 path="/financiamentos/:id"
                 element={<FinanciamentoDetails />}
+              />
+              <Route
+                path="/financiamentos/:id/extrato"
+                element={<FinanciamentoExtrato />}
               />
             </Route>
             <Route path="*" element={<NotFound />} />

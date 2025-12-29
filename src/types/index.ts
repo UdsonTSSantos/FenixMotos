@@ -10,6 +10,13 @@ export interface Moto {
   valor: number
   status: MotoStatus
   imagem?: string
+  // Enhanced Inventory Tracking
+  kmAtual?: number
+  compra_vendedor?: string
+  compra_valor?: number
+  compra_data?: string // ISO Date
+  compra_km?: number
+  consignacao?: boolean
 }
 
 export interface Cliente {
@@ -22,6 +29,20 @@ export interface Cliente {
   cidade: string
   estado: string
   cep: string
+  // Advanced Profiling
+  rg?: string
+  dataNascimento?: string // ISO Date
+  genero?: 'masculino' | 'feminino' | 'outro'
+  // Professional Information
+  prof_empresa?: string
+  prof_endereco?: string
+  prof_telefone?: string
+  prof_email?: string
+  prof_cnpj?: string
+  prof_cargo?: string
+  prof_tempo?: string // e.g., "2 anos"
+  prof_salario?: number
+  prof_supervisor?: string
 }
 
 export type FinanciamentoStatus = 'ativo' | 'quitado' | 'inadimplente'
@@ -52,6 +73,15 @@ export interface Parcela {
   valorMulta: number
   valorTotal: number
   status: ParcelaStatus
+}
+
+export interface Empresa {
+  nome: string
+  cnpj: string
+  endereco: string
+  telefone: string
+  email: string
+  logo: string
 }
 
 export const FABRICANTES = [
