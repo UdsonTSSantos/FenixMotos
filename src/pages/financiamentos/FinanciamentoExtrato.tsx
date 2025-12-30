@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
-import { formatCurrency, formatCNPJ } from '@/lib/utils'
+import { formatCurrency, formatCNPJ, formatContractId } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Printer } from 'lucide-react'
 import {
@@ -56,6 +56,16 @@ export default function FinanciamentoExtrato() {
               <p className="text-sm">
                 Contato: {empresa.telefone} | {empresa.email}
               </p>
+              {/* Social Media Links for Print */}
+              <div className="text-xs mt-1 space-x-2">
+                {empresa.website && <span>{empresa.website}</span>}
+                {empresa.instagram && (
+                  <span>IG: {empresa.instagram.split('/').pop()}</span>
+                )}
+                {empresa.facebook && (
+                  <span>FB: {empresa.facebook.split('/').pop()}</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -64,7 +74,7 @@ export default function FinanciamentoExtrato() {
               Emissão: {new Date().toLocaleDateString()}
             </p>
             <p className="text-sm font-bold mt-2">
-              Contrato #{financiamento.id.toUpperCase()}
+              Contrato #{formatContractId(financiamento.id)}
             </p>
           </div>
         </div>
@@ -105,6 +115,17 @@ export default function FinanciamentoExtrato() {
             <p>
               <strong>Placa:</strong> {moto?.placa || 'N/A'}
             </p>
+            <p>
+              <strong>Licenciamento:</strong>{' '}
+              {moto?.dataLicenciamento
+                ? new Date(moto.dataLicenciamento).toLocaleDateString()
+                : 'N/A'}
+            </p>
+            {moto?.chassis && (
+              <p>
+                <strong>Chassi:</strong> {moto.chassis}
+              </p>
+            )}
           </div>
         </div>
 
@@ -194,6 +215,11 @@ export default function FinanciamentoExtrato() {
 
         {/* Footer */}
         <div className="mt-12 text-center text-xs text-gray-500 pt-4 border-t">
+          <div className="flex justify-center gap-4 mb-2 font-medium">
+            {empresa.instagram && <span>Instagram: {empresa.instagram}</span>}
+            {empresa.facebook && <span>Facebook: {empresa.facebook}</span>}
+            {empresa.website && <span>Site: {empresa.website}</span>}
+          </div>
           <p>Documento gerado automaticamente pelo sistema MotoFin.</p>
         </div>
       </div>

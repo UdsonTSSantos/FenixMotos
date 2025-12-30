@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatCurrency, parseCurrency } from '@/lib/utils'
+import { formatCurrency, parseCurrency, formatContractId } from '@/lib/utils'
 import {
   ArrowLeft,
   DollarSign,
@@ -136,7 +136,7 @@ export default function FinanciamentoDetails() {
             </Link>
           </Button>
           <h1 className="text-2xl font-bold">
-            Contrato #{financiamento.id.toUpperCase()}
+            Contrato #{formatContractId(financiamento.id)}
           </h1>
         </div>
         <div className="flex gap-2">

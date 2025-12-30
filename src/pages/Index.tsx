@@ -8,14 +8,7 @@ import {
   Building2,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import {
-  Bar,
-  BarChart,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from 'recharts'
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
   ChartTooltip,
@@ -80,7 +73,7 @@ export default function Index() {
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <Button asChild variant="outline">
           <Link to="/empresa">
-            <Building2 className="mr-2 h-4 w-4" /> Minha Empresa
+            <Building2 className="mr-2 h-4 w-4" /> Empresa
           </Link>
         </Button>
       </div>

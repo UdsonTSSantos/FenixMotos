@@ -61,6 +61,8 @@ const INITIAL_MOTOS: Moto[] = [
     status: 'estoque',
     imagem: 'https://img.usecurling.com/p/300/200?q=honda%20cg%20160&color=red',
     kmAtual: 0,
+    chassis: '9C2JP8580KR001234',
+    dataLicenciamento: '2025-10-15',
     historicoAquisicao: [
       {
         id: 'aq1',
@@ -82,6 +84,8 @@ const INITIAL_MOTOS: Moto[] = [
     status: 'estoque',
     imagem: 'https://img.usecurling.com/p/300/200?q=yamaha%20mt03&color=blue',
     kmAtual: 5000,
+    chassis: '9C2JP8580KR005678',
+    dataLicenciamento: new Date().toISOString().split('T')[0], // For testing "Current Month"
     historicoAquisicao: [
       {
         id: 'aq2',
@@ -104,6 +108,8 @@ const INITIAL_MOTOS: Moto[] = [
     placa: 'ABC-1234',
     imagem: 'https://img.usecurling.com/p/300/200?q=honda%20cb500x&color=green',
     kmAtual: 12000,
+    chassis: '9C2JP8580KR009012',
+    dataLicenciamento: '2025-05-20',
     historicoAquisicao: [
       {
         id: 'aq3',
@@ -189,11 +195,11 @@ const INITIAL_EMPRESA: Empresa = {
   telefone: '(11) 3333-4444',
   email: 'contato@motofin.com',
   logo: 'https://img.usecurling.com/i?q=motorcycle&shape=outline&color=black',
-  instagram: '',
-  facebook: '',
-  x: '',
+  instagram: 'https://instagram.com/motofin',
+  facebook: 'https://facebook.com/motofin',
+  x: 'https://x.com/motofin',
   tiktok: '',
-  website: '',
+  website: 'https://motofin.com.br',
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -323,9 +329,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       status: 'pendente',
     }))
 
+    // Generate numeric ID
+    const maxId = financiamentos.reduce((max, f) => {
+      const numId = parseInt(f.id)
+      return !isNaN(numId) && numId > max ? numId : max
+    }, 0)
+    const newId = (maxId + 1).toString()
+
     const newFinanciamento: Financiamento = {
       ...data,
-      id: Math.random().toString(36).substr(2, 9),
+      id: newId,
       status: 'ativo',
       parcelas,
     }

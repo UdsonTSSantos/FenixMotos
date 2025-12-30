@@ -52,6 +52,8 @@ const formSchema = z.object({
   ano: z.coerce.number().min(1900).max(2100),
   cor: z.string().min(3, 'Cor é obrigatória'),
   placa: z.string().optional(),
+  chassis: z.string().optional(),
+  dataLicenciamento: z.string().optional(),
   valor: z.string().min(1, 'Valor é obrigatório'),
   kmAtual: z.coerce.number().min(0, 'KM não pode ser negativo'),
   imagem: z.string().optional(),
@@ -77,6 +79,8 @@ export default function MotoForm() {
       ano: new Date().getFullYear(),
       cor: '',
       placa: '',
+      chassis: '',
+      dataLicenciamento: '',
       valor: '',
       kmAtual: 0,
       imagem: '',
@@ -102,6 +106,8 @@ export default function MotoForm() {
         ano: existingMoto.ano,
         cor: existingMoto.cor,
         placa: existingMoto.placa || '',
+        chassis: existingMoto.chassis || '',
+        dataLicenciamento: existingMoto.dataLicenciamento || '',
         valor: formatCurrency(existingMoto.valor),
         kmAtual: existingMoto.kmAtual || 0,
         imagem: existingMoto.imagem,
@@ -302,6 +308,38 @@ export default function MotoForm() {
                             className="uppercase"
                             maxLength={8}
                           />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="chassis"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número do Chassi</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex: 9C2JP85..."
+                            {...field}
+                            className="uppercase"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="dataLicenciamento"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Data de Licenciamento</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

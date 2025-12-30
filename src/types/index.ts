@@ -16,6 +16,8 @@ export interface Moto {
   ano: number
   cor: string
   placa?: string
+  chassis?: string // New field
+  dataLicenciamento?: string // New field (ISO Date)
   valor: number
   status: MotoStatus
   imagem?: string

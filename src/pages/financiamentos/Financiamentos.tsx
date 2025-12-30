@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Search, Eye } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatContractId } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import {
   Select,
@@ -35,9 +35,11 @@ export default function Financiamentos() {
   const filteredFinanciamentos = financiamentos.filter((fin) => {
     const clienteName = getClienteName(fin.clienteId).toLowerCase()
     const motoModel = getMotoModel(fin.motoId).toLowerCase()
+    const idMatch = fin.id.includes(filter)
     const searchMatch =
       clienteName.includes(filter.toLowerCase()) ||
-      motoModel.includes(filter.toLowerCase())
+      motoModel.includes(filter.toLowerCase()) ||
+      idMatch
     const statusMatch = statusFilter === 'all' || fin.status === statusFilter
     return searchMatch && statusMatch
   })
@@ -57,7 +59,7 @@ export default function Financiamentos() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por cliente ou moto..."
+            placeholder="Buscar por cliente, moto ou ID..."
             className="pl-8"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -80,6 +82,7 @@ export default function Financiamentos() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Contrato</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Moto</TableHead>
               <TableHead>Data Contrato</TableHead>
@@ -92,8 +95,9 @@ export default function Financiamentos() {
             {filteredFinanciamentos.map((fin) => (
               <TableRow key={fin.id}>
                 <TableCell className="font-medium">
-                  {getClienteName(fin.clienteId)}
+                  #{formatContractId(fin.id)}
                 </TableCell>
+                <TableCell>{getClienteName(fin.clienteId)}</TableCell>
                 <TableCell>{getMotoModel(fin.motoId)}</TableCell>
                 <TableCell>
                   {new Date(fin.dataContrato).toLocaleDateString()}
@@ -131,7 +135,7 @@ export default function Financiamentos() {
             {filteredFinanciamentos.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhum financiamento encontrado.

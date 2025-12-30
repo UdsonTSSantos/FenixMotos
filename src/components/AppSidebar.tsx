@@ -36,7 +36,7 @@ const items = [
     icon: FileText,
   },
   {
-    title: 'Minha Empresa',
+    title: 'Empresa',
     url: '/empresa',
     icon: Building2,
   },
@@ -88,7 +88,7 @@ export function AppSidebar() {
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
-                </SidebarMenuItem>
+                SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -108,3 +108,4 @@ export function AppSidebar() {
     </Sidebar>
   )
 }
+

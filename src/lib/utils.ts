@@ -54,3 +54,10 @@ export const formatCEP = (value: string) => {
 export const parseCurrency = (value: string) => {
   return Number(value.replace(/[^0-9,-]+/g, '').replace(',', '.'))
 }
+
+export const formatContractId = (id: string) => {
+  if (/^\d+$/.test(id)) {
+    return id.padStart(5, '0')
+  }
+  return id
+}
