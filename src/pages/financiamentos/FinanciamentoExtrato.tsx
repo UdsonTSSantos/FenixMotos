@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { formatCurrency, formatCNPJ, formatContractId } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Printer } from 'lucide-react'
+import { Printer, Instagram, Facebook, Twitter, Video } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -29,6 +29,15 @@ export default function FinanciamentoExtrato() {
     window.print()
   }
 
+  const phones = [empresa.telefone, empresa.telefone2, empresa.telefone3]
+    .filter(Boolean)
+    .join(' | ')
+
+  const valorParcela =
+    financiamento.parcelas.length > 0
+      ? financiamento.parcelas[0].valorOriginal
+      : financiamento.valorFinanciado / financiamento.quantidadeParcelas
+
   return (
     <div className="bg-white min-h-screen p-8 text-black">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -53,19 +62,8 @@ export default function FinanciamentoExtrato() {
               <h1 className="text-2xl font-bold uppercase">{empresa.nome}</h1>
               <p className="text-sm">{empresa.endereco}</p>
               <p className="text-sm">CNPJ: {formatCNPJ(empresa.cnpj)}</p>
-              <p className="text-sm">
-                Contato: {empresa.telefone} | {empresa.email}
-              </p>
-              {/* Social Media Links for Print */}
-              <div className="text-xs mt-1 space-x-2">
-                {empresa.website && <span>{empresa.website}</span>}
-                {empresa.instagram && (
-                  <span>IG: {empresa.instagram.split('/').pop()}</span>
-                )}
-                {empresa.facebook && (
-                  <span>FB: {empresa.facebook.split('/').pop()}</span>
-                )}
-              </div>
+              <p className="text-sm font-medium mt-1">{phones}</p>
+              <p className="text-sm">{empresa.email}</p>
             </div>
           </div>
           <div className="text-right">
@@ -132,7 +130,7 @@ export default function FinanciamentoExtrato() {
         {/* Financial Summary */}
         <div className="bg-gray-100 p-4 rounded border border-gray-300">
           <h3 className="font-bold mb-2">RESUMO DO CONTRATO</h3>
-          <div className="grid grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="block text-gray-500">Valor Total</span>
               <span className="font-bold">
@@ -157,6 +155,32 @@ export default function FinanciamentoExtrato() {
                 {financiamento.status}
               </span>
             </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-4 border-t border-gray-300 pt-4">
+            <div>
+              <span className="block text-gray-500">Valor da Parcela</span>
+              <span className="font-bold">{formatCurrency(valorParcela)}</span>
+            </div>
+            <div>
+              <span className="block text-gray-500">Taxa Juros (Atraso)</span>
+              <span className="font-bold">
+                {financiamento.taxaJurosAtraso}% a.d.
+              </span>
+            </div>
+            <div>
+              <span className="block text-gray-500">Multa (Atraso)</span>
+              <span className="font-bold">
+                {formatCurrency(financiamento.valorMultaAtraso)}
+              </span>
+            </div>
+            {financiamento.taxaFinanciamento !== undefined && (
+              <div>
+                <span className="block text-gray-500">Taxa Financiamento</span>
+                <span className="font-bold">
+                  {financiamento.taxaFinanciamento}%
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -215,10 +239,30 @@ export default function FinanciamentoExtrato() {
 
         {/* Footer */}
         <div className="mt-12 text-center text-xs text-gray-500 pt-4 border-t">
-          <div className="flex justify-center gap-4 mb-2 font-medium">
-            {empresa.instagram && <span>Instagram: {empresa.instagram}</span>}
-            {empresa.facebook && <span>Facebook: {empresa.facebook}</span>}
-            {empresa.website && <span>Site: {empresa.website}</span>}
+          <div className="flex justify-center flex-wrap gap-6 mb-2 font-medium">
+            {empresa.website && <span>{empresa.website}</span>}
+            {empresa.instagram && (
+              <span className="flex items-center gap-1">
+                <Instagram className="h-3 w-3" />{' '}
+                {empresa.instagram.split('/').pop()}
+              </span>
+            )}
+            {empresa.facebook && (
+              <span className="flex items-center gap-1">
+                <Facebook className="h-3 w-3" />{' '}
+                {empresa.facebook.split('/').pop()}
+              </span>
+            )}
+            {empresa.x && (
+              <span className="flex items-center gap-1">
+                <Twitter className="h-3 w-3" /> {empresa.x.split('/').pop()}
+              </span>
+            )}
+            {empresa.tiktok && (
+              <span className="flex items-center gap-1">
+                <Video className="h-3 w-3" /> {empresa.tiktok.split('/').pop()}
+              </span>
+            )}
           </div>
           <p>Documento gerado automaticamente pelo sistema MotoFin.</p>
         </div>

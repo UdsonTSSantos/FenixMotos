@@ -12,7 +12,6 @@ import {
   Parcela,
   Empresa,
   ParcelaStatus,
-  Aquisicao,
 } from '@/types'
 import {
   differenceInDays,
@@ -193,6 +192,8 @@ const INITIAL_EMPRESA: Empresa = {
   cnpj: '00.000.000/0000-00',
   endereco: 'Av. das Motos, 1000 - Centro',
   telefone: '(11) 3333-4444',
+  telefone2: '',
+  telefone3: '',
   email: 'contato@motofin.com',
   logo: 'https://img.usecurling.com/i?q=motorcycle&shape=outline&color=black',
   instagram: 'https://instagram.com/motofin',

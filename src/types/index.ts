@@ -99,6 +99,8 @@ export interface Empresa {
   cnpj: string
   endereco: string
   telefone: string
+  telefone2?: string
+  telefone3?: string
   email: string
   logo: string
   // Social Media

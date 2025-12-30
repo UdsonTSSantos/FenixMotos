@@ -22,13 +22,15 @@ import {
   CardDescription,
 } from '@/components/ui/card'
 import { formatCNPJ, formatPhone } from '@/lib/utils'
-import { Upload } from 'lucide-react'
+import { Instagram, Facebook, Twitter, Video } from 'lucide-react'
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   cnpj: z.string().min(18, 'CNPJ inválido'),
   endereco: z.string().min(5, 'Endereço obrigatório'),
   telefone: z.string().min(14, 'Telefone inválido'),
+  telefone2: z.string().optional(),
+  telefone3: z.string().optional(),
   email: z.string().email('Email inválido'),
   logo: z.string().optional(),
   instagram: z.string().optional(),
@@ -49,6 +51,8 @@ export default function Empresa() {
       cnpj: '',
       endereco: '',
       telefone: '',
+      telefone2: '',
+      telefone3: '',
       email: '',
       logo: '',
       instagram: '',
@@ -63,6 +67,8 @@ export default function Empresa() {
     if (empresa) {
       form.reset({
         ...empresa,
+        telefone2: empresa.telefone2 || '',
+        telefone3: empresa.telefone3 || '',
         instagram: empresa.instagram || '',
         facebook: empresa.facebook || '',
         x: empresa.x || '',
@@ -84,9 +90,11 @@ export default function Empresa() {
   const handleCNPJ = (e: React.ChangeEvent<HTMLInputElement>) => {
     form.setValue('cnpj', formatCNPJ(e.target.value))
   }
-  const handlePhone = (e: React.ChangeEvent<HTMLInputElement>) => {
-    form.setValue('telefone', formatPhone(e.target.value))
-  }
+  const handlePhone =
+    (field: 'telefone' | 'telefone2' | 'telefone3') =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      form.setValue(field, formatPhone(e.target.value))
+    }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -181,28 +189,9 @@ export default function Empresa() {
 
                 <FormField
                   control={form.control}
-                  name="telefone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          onChange={handlePhone}
-                          maxLength={15}
-                          placeholder="(00) 00000-0000"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="email"
                   render={({ field }) => (
-                    <FormItem className="md:col-span-2">
+                    <FormItem>
                       <FormLabel>Email de Contato</FormLabel>
                       <FormControl>
                         <Input
@@ -215,6 +204,65 @@ export default function Empresa() {
                     </FormItem>
                   )}
                 />
+
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="telefone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone 1</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            onChange={handlePhone('telefone')}
+                            maxLength={15}
+                            placeholder="(00) 00000-0000"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="telefone2"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone 2</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            onChange={handlePhone('telefone2')}
+                            maxLength={15}
+                            placeholder="(00) 00000-0000"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="telefone3"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Telefone 3</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            onChange={handlePhone('telefone3')}
+                            maxLength={15}
+                            placeholder="(00) 00000-0000"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}
@@ -254,7 +302,9 @@ export default function Empresa() {
                       name="instagram"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Instagram</FormLabel>
+                          <FormLabel className="flex items-center gap-2">
+                            <Instagram className="h-4 w-4" /> Instagram
+                          </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
@@ -270,7 +320,9 @@ export default function Empresa() {
                       name="facebook"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Facebook</FormLabel>
+                          <FormLabel className="flex items-center gap-2">
+                            <Facebook className="h-4 w-4" /> Facebook
+                          </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
@@ -286,7 +338,9 @@ export default function Empresa() {
                       name="x"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>X (Twitter)</FormLabel>
+                          <FormLabel className="flex items-center gap-2">
+                            <Twitter className="h-4 w-4" /> X (Twitter)
+                          </FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="https://x.com/..." />
                           </FormControl>
@@ -299,7 +353,9 @@ export default function Empresa() {
                       name="tiktok"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>TikTok</FormLabel>
+                          <FormLabel className="flex items-center gap-2">
+                            <Video className="h-4 w-4" /> TikTok
+                          </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
