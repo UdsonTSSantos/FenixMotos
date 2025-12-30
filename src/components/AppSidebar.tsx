@@ -88,7 +88,7 @@ export function AppSidebar() {
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
-                SidebarMenuItem>
+                </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -108,4 +108,3 @@ export function AppSidebar() {
     </Sidebar>
   )
 }
-
