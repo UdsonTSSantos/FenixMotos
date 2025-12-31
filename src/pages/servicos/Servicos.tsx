@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Search, Trash2 } from 'lucide-react'
+import { Plus, Search, Trash2, Edit } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   Dialog,
@@ -21,36 +21,57 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Servico } from '@/types'
 
 export default function Servicos() {
-  const { servicos, addServico, deleteServico } = useData()
+  const { servicos, addServico, updateServico, deleteServico } = useData()
   const [filter, setFilter] = useState('')
-  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingService, setEditingService] = useState<Servico | null>(null)
 
-  // New Service State
-  const [newNome, setNewNome] = useState('')
-  const [newDesc, setNewDesc] = useState('')
-  const [newValor, setNewValor] = useState('')
-  const [newComissao, setNewComissao] = useState('')
+  // Service Form State
+  const [nome, setNome] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [valor, setValor] = useState('')
+  const [comissao, setComissao] = useState('')
 
   const filteredServicos = servicos.filter((s) =>
     s.nome.toLowerCase().includes(filter.toLowerCase()),
   )
 
-  const handleAdd = () => {
-    if (!newNome || !newValor) return
+  const handleOpenDialog = (service?: Servico) => {
+    if (service) {
+      setEditingService(service)
+      setNome(service.nome)
+      setDescricao(service.descricao)
+      setValor(formatCurrency(service.valor))
+      setComissao(service.comissao.toString())
+    } else {
+      setEditingService(null)
+      setNome('')
+      setDescricao('')
+      setValor('')
+      setComissao('')
+    }
+    setIsDialogOpen(true)
+  }
 
-    addServico({
-      nome: newNome,
-      descricao: newDesc,
-      valor: parseCurrency(newValor),
-      comissao: Number(newComissao.replace(',', '.')), // Keep as pure number for percentage
-    })
-    setIsAddOpen(false)
-    setNewNome('')
-    setNewDesc('')
-    setNewValor('')
-    setNewComissao('')
+  const handleSave = () => {
+    if (!nome || !valor) return
+
+    const serviceData = {
+      nome,
+      descricao,
+      valor: parseCurrency(valor),
+      comissao: Number(comissao.replace(',', '.')), // Percentage
+    }
+
+    if (editingService) {
+      updateServico(editingService.id, serviceData)
+    } else {
+      addServico(serviceData)
+    }
+    setIsDialogOpen(false)
   }
 
   const handleCurrencyInput =
@@ -65,7 +86,7 @@ export default function Servicos() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Serviços</h1>
-        <Button onClick={() => setIsAddOpen(true)}>
+        <Button onClick={() => handleOpenDialog()}>
           <Plus className="mr-2 h-4 w-4" /> Novo Serviço
         </Button>
       </div>
@@ -106,6 +127,13 @@ export default function Servicos() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    onClick={() => handleOpenDialog(servico)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => deleteServico(servico.id)}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -127,12 +155,16 @@ export default function Servicos() {
         </Table>
       </div>
 
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Novo Serviço</DialogTitle>
+            <DialogTitle>
+              {editingService ? 'Editar Serviço' : 'Novo Serviço'}
+            </DialogTitle>
             <DialogDescription>
-              Cadastre um novo serviço disponível na oficina.
+              {editingService
+                ? 'Atualize os dados do serviço.'
+                : 'Cadastre um novo serviço disponível na oficina.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -142,8 +174,8 @@ export default function Servicos() {
               </Label>
               <Input
                 id="nome"
-                value={newNome}
-                onChange={(e) => setNewNome(e.target.value)}
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
                 className="col-span-3"
               />
             </div>
@@ -153,8 +185,8 @@ export default function Servicos() {
               </Label>
               <Input
                 id="desc"
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
                 className="col-span-3"
               />
             </div>
@@ -164,8 +196,8 @@ export default function Servicos() {
               </Label>
               <Input
                 id="valor"
-                value={newValor}
-                onChange={handleCurrencyInput(setNewValor)}
+                value={valor}
+                onChange={handleCurrencyInput(setValor)}
                 placeholder="R$ 0,00"
                 className="col-span-3"
               />
@@ -179,15 +211,15 @@ export default function Servicos() {
                 type="number"
                 min={0}
                 max={100}
-                value={newComissao}
-                onChange={(e) => setNewComissao(e.target.value)}
+                value={comissao}
+                onChange={(e) => setComissao(e.target.value)}
                 placeholder="Ex: 10"
                 className="col-span-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleAdd}>Salvar</Button>
+            <Button onClick={handleSave}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

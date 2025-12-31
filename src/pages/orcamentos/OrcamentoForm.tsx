@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { formatCurrency, formatCNPJ } from '@/lib/utils'
+import { formatCurrency, formatPhone } from '@/lib/utils'
 import {
   Trash2,
   Printer,
@@ -176,8 +176,17 @@ export default function OrcamentoForm() {
       form.setValue('clienteTelefone', cliente.telefone)
 
       // Auto-populate moto details from latest active financing or history
-      // Logic: Find financing for this client, get moto.
-      const financ = financiamentos.find((f) => f.clienteId === cliente.id)
+      const financs = financiamentos
+        .filter((f) => f.clienteId === cliente.id)
+        .sort(
+          (a, b) =>
+            new Date(b.dataContrato).getTime() -
+            new Date(a.dataContrato).getTime(),
+        )
+
+      // Prefer active, otherwise latest
+      const financ = financs.find((f) => f.status === 'ativo') || financs[0]
+
       if (financ) {
         const moto = motos.find((m) => m.id === financ.motoId)
         if (moto) {
@@ -224,13 +233,8 @@ export default function OrcamentoForm() {
     }
   }
 
-  // Calculate totals
+  // Calculate totals for summary and submission
   const watchedItens = form.watch('itens')
-
-  // Recalculate item totals when qty/discount/unit changes
-  // This is handled by onChange in inputs usually, but we can double check here or trust the form state updates
-  // Since we use useFieldArray, we rely on the form state being correct.
-  // However, we need derived totals for the summary.
 
   const totalPecas = watchedItens
     .filter((i) => i.tipo === 'peca')
@@ -242,11 +246,8 @@ export default function OrcamentoForm() {
 
   const totalGeral = totalPecas + totalServicos
 
-  // Commission Logic
-  // Parts: 3% of total discounted parts value
+  // Commission Logic: 3% of Parts (Discounted) + Service Commission % (Discounted)
   const comissaoPecas = totalPecas * 0.03
-
-  // Services: Sum of (TotalValue * (Commission% / 100))
   const comissaoServicos = watchedItens
     .filter((i) => i.tipo === 'servico')
     .reduce((acc, i) => acc + i.valorTotal * (i.comissaoUnitario / 100), 0)
@@ -286,7 +287,7 @@ export default function OrcamentoForm() {
       .join(' | ')
 
     return (
-      <div className="bg-white text-black p-8 min-h-screen font-sans">
+      <div className="bg-white text-black p-8 min-h-screen font-sans print:p-0 print:m-0 print:w-full">
         {/* Header */}
         <div className="border-b-2 border-black pb-4 flex justify-between items-start mb-6">
           <div className="flex gap-4 items-center">
@@ -548,7 +549,12 @@ export default function OrcamentoForm() {
                     <FormItem>
                       <FormLabel>Celular / Telefone</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(formatPhone(e.target.value))
+                          }
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -729,11 +735,13 @@ export default function OrcamentoForm() {
                         <SelectValue placeholder="+ Adicionar Peça" />
                       </SelectTrigger>
                       <SelectContent>
-                        {pecas.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.nome}
-                          </SelectItem>
-                        ))}
+                        {pecas
+                          .sort((a, b) => a.nome.localeCompare(b.nome))
+                          .map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.nome}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <Select onValueChange={(val) => addItem('servico', val)}>

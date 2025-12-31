@@ -87,7 +87,12 @@ export default function Pecas() {
     }
 
   const exportToExcel = () => {
-    // Basic CSV Export
+    // Generate CSV (Excel compatible)
+    // Ensure alphabetical sort
+    const sortedForExport = [...filteredPecas].sort((a, b) =>
+      a.nome.localeCompare(b.nome),
+    )
+
     const headers = [
       'Código',
       'Nome',
@@ -96,7 +101,7 @@ export default function Pecas() {
       'Preço Custo',
       'Preço Venda',
     ]
-    const rows = filteredPecas.map((p) => [
+    const rows = sortedForExport.map((p) => [
       p.codigo,
       p.nome,
       p.descricao,
@@ -133,7 +138,7 @@ export default function Pecas() {
             <Upload className="mr-2 h-4 w-4" /> Importar XML
           </Button>
           <Button onClick={() => setIsAddOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Adicionar Manualmente
+            <Plus className="mr-2 h-4 w-4" /> Nova Peça
           </Button>
         </div>
       </div>
