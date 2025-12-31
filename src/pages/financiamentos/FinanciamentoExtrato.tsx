@@ -2,7 +2,14 @@ import { useParams } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { formatCurrency, formatCNPJ, formatContractId } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Printer, Instagram, Facebook, Twitter, Video } from 'lucide-react'
+import {
+  Printer,
+  Instagram,
+  Facebook,
+  Twitter,
+  Video,
+  MessageCircle,
+} from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -29,6 +36,19 @@ export default function FinanciamentoExtrato() {
     window.print()
   }
 
+  const handleWhatsApp = () => {
+    const phone = cliente?.telefone.replace(/\D/g, '')
+    if (!phone) {
+      alert('Telefone do cliente não disponível')
+      return
+    }
+
+    const message = `*EXTRATO FINANCEIRO - ${empresa.nome}*\n\n*Contrato:* #${formatContractId(financiamento.id)}\n*Cliente:* ${cliente?.nome}\n*Veículo:* ${moto?.modelo}\n\n*Status:* ${financiamento.status.toUpperCase()}\n*Valor Financiado:* ${formatCurrency(financiamento.valorFinanciado)}\n*Parcelas:* ${financiamento.quantidadeParcelas}x\n\nAcesse o sistema para ver o extrato completo ou entre em contato para mais detalhes.`
+
+    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
+  }
+
   const phones = [empresa.telefone, empresa.telefone2, empresa.telefone3]
     .filter(Boolean)
     .join(' | ')
@@ -42,8 +62,14 @@ export default function FinanciamentoExtrato() {
     <div className="bg-white min-h-screen p-8 text-black print:p-0">
       <div className="max-w-[210mm] mx-auto space-y-8 print:w-full print:max-w-none">
         {/* Header / Actions */}
-        <div className="flex justify-end print:hidden">
-          <Button onClick={handlePrint}>
+        <div className="flex justify-end gap-2 print:hidden">
+          <Button
+            onClick={handleWhatsApp}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <MessageCircle className="mr-2 h-4 w-4" /> Enviar WhatsApp
+          </Button>
+          <Button onClick={handlePrint} variant="outline">
             <Printer className="mr-2 h-4 w-4" /> Imprimir Extrato
           </Button>
         </div>

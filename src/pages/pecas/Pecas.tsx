@@ -138,7 +138,7 @@ export default function Pecas() {
             <Upload className="mr-2 h-4 w-4" /> Importar XML
           </Button>
           <Button onClick={() => setIsAddOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Nova Peça
+            <Plus className="mr-2 h-4 w-4" /> Acrescentar nova peça manualmente
           </Button>
         </div>
       </div>

@@ -163,7 +163,7 @@ export default function Servicos() {
             </DialogTitle>
             <DialogDescription>
               {editingService
-                ? 'Atualize os dados do serviço.'
+                ? 'Atualize os dados do serviço e comissão.'
                 : 'Cadastre um novo serviço disponível na oficina.'}
             </DialogDescription>
           </DialogHeader>

@@ -31,7 +31,7 @@ import {
   Search,
   Check,
   Wrench,
-  FileText,
+  MessageCircle,
 } from 'lucide-react'
 import {
   Table,
@@ -150,7 +150,7 @@ export default function OrcamentoForm() {
     },
   })
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'itens',
   })
@@ -279,6 +279,50 @@ export default function OrcamentoForm() {
     }, 100)
   }
 
+  const handleWhatsApp = (mode: 'quote' | 'service_order') => {
+    const phone = form.getValues('clienteTelefone')?.replace(/\D/g, '')
+    if (!phone) {
+      alert('Telefone do cliente não preenchido')
+      return
+    }
+
+    const isQuote = mode === 'quote'
+    const cliente = form.getValues('clienteNome')
+    const veiculo = `${form.getValues('motoModelo')} (${form.getValues('motoPlaca')})`
+    const itemsText = watchedItens
+      .map((i) =>
+        isQuote
+          ? `${i.quantidade}x ${i.nome} - ${formatCurrency(i.valorTotal)}`
+          : `${i.quantidade}x ${i.nome}`,
+      )
+      .join('\n')
+
+    let message = ''
+
+    if (isQuote) {
+      message = `*ORÇAMENTO - ${empresa.nome}*\n\n`
+      message += `*Cliente:* ${cliente}\n`
+      message += `*Veículo:* ${veiculo}\n\n`
+      message += `*ITENS:*\n${itemsText}\n\n`
+      message += `*TOTAL GERAL:* ${formatCurrency(totalGeral)}\n`
+      message += `*Forma de Pagamento:* ${form.getValues('formaPagamento')}\n`
+      message += `*Garantia Peças:* ${form.getValues('garantiaPecas')}\n`
+      message += `*Garantia Serviços:* ${form.getValues('garantiaServicos')}\n\n`
+      message += `Acesse para mais detalhes.`
+    } else {
+      message = `*ORDEM DE SERVIÇO - ${empresa.nome}*\n\n`
+      message += `*Cliente:* ${cliente}\n`
+      message += `*Veículo:* ${veiculo}\n\n`
+      message += `*SERVIÇOS REALIZADOS:*\n${itemsText}\n\n`
+      if (form.getValues('observacao')) {
+        message += `*OBS:* ${form.getValues('observacao')}\n`
+      }
+    }
+
+    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
+  }
+
   if (printMode !== 'none') {
     const isQuote = printMode === 'quote'
     const vendedor = usuarios.find((u) => u.id === form.getValues('vendedorId'))
@@ -289,7 +333,7 @@ export default function OrcamentoForm() {
     return (
       <div className="bg-white text-black p-8 min-h-screen font-sans print:p-0 print:m-0 print:w-full">
         {/* Header */}
-        <div className="border-b-2 border-black pb-4 flex justify-between items-start mb-6">
+        <div className="pb-4 flex justify-between items-start mb-6">
           <div className="flex gap-4 items-center">
             {empresa.logo && (
               <img
@@ -354,7 +398,7 @@ export default function OrcamentoForm() {
         {/* Items Table */}
         <table className="w-full mb-6 text-sm border-collapse">
           <thead>
-            <tr className="border-b-2 border-black">
+            <tr className="border-b border-black">
               <th className="text-left py-2">Descrição</th>
               <th className="text-center py-2 w-16">Qtd</th>
               {isQuote && (
@@ -368,7 +412,7 @@ export default function OrcamentoForm() {
           </thead>
           <tbody>
             {watchedItens.map((item, idx) => (
-              <tr key={idx} className="border-b border-gray-300">
+              <tr key={idx} className="border-b border-gray-200">
                 <td className="py-2">{item.nome}</td>
                 <td className="text-center py-2">{item.quantidade}</td>
                 {isQuote && (
@@ -376,7 +420,9 @@ export default function OrcamentoForm() {
                     <td className="text-right py-2">
                       {formatCurrency(item.valorUnitario)}
                     </td>
-                    <td className="text-right py-2">{item.desconto}%</td>
+                    <td className="text-right py-2">
+                      {item.desconto > 0 ? `${item.desconto}%` : '-'}
+                    </td>
                     <td className="text-right py-2 font-medium">
                       {formatCurrency(item.valorTotal)}
                     </td>
@@ -459,14 +505,37 @@ export default function OrcamentoForm() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>
             {isEditing ? 'Editar Orçamento' : 'Novo Orçamento'}
+            {existing && (
+              <span className="ml-4 text-sm font-normal text-muted-foreground">
+                #{existing.id.toUpperCase()}
+              </span>
+            )}
           </CardTitle>
           <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="Enviar Orçamento via WhatsApp"
+              onClick={() => handleWhatsApp('quote')}
+            >
+              <MessageCircle className="h-4 w-4 text-green-600" />
+            </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => handlePrint('quote')}
             >
               <Printer className="mr-2 h-4 w-4" /> Orçamento (A4)
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="Enviar O.S. via WhatsApp"
+              onClick={() => handleWhatsApp('service_order')}
+            >
+              <MessageCircle className="h-4 w-4 text-green-600" />
             </Button>
             <Button
               type="button"
