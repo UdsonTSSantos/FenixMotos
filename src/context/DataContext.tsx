@@ -12,6 +12,10 @@ import {
   Parcela,
   Empresa,
   ParcelaStatus,
+  Usuario,
+  Peca,
+  Servico,
+  Orcamento,
 } from '@/types'
 import {
   differenceInDays,
@@ -23,10 +27,22 @@ import {
 import { toast } from '@/hooks/use-toast'
 
 interface DataContextType {
+  // Data
   motos: Moto[]
   clientes: Cliente[]
   financiamentos: Financiamento[]
   empresa: Empresa
+  usuarios: Usuario[]
+  pecas: Peca[]
+  servicos: Servico[]
+  orcamentos: Orcamento[]
+
+  // Auth
+  currentUser: Usuario | null
+  login: (email: string, pass: string) => boolean
+  logout: () => void
+
+  // Methods
   addMoto: (moto: Omit<Moto, 'id' | 'status'>) => void
   updateMoto: (id: string, moto: Partial<Moto>) => void
   deleteMoto: (id: string) => void
@@ -44,6 +60,23 @@ interface DataContextType {
   ) => void
   refreshPenalties: () => void
   updateEmpresa: (data: Empresa) => void
+
+  // New Methods
+  addUsuario: (user: Omit<Usuario, 'id'>) => void
+  updateUsuario: (id: string, user: Partial<Usuario>) => void
+  deleteUsuario: (id: string) => void
+
+  addPeca: (peca: Omit<Peca, 'id'>) => void
+  updatePeca: (id: string, peca: Partial<Peca>) => void
+  deletePeca: (id: string) => void
+  importPecasXML: (xmlContent: string) => void
+
+  addServico: (servico: Omit<Servico, 'id'>) => void
+  updateServico: (id: string, servico: Partial<Servico>) => void
+  deleteServico: (id: string) => void
+
+  addOrcamento: (orcamento: Omit<Orcamento, 'id'>) => void
+  updateOrcamento: (id: string, orcamento: Partial<Orcamento>) => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -62,39 +95,7 @@ const INITIAL_MOTOS: Moto[] = [
     kmAtual: 0,
     chassis: '9C2JP8580KR001234',
     dataLicenciamento: '2025-10-15',
-    historicoAquisicao: [
-      {
-        id: 'aq1',
-        data: '2024-01-01',
-        valor: 15000,
-        vendedor: 'Honda Factory',
-        km: 0,
-        consignacao: false,
-      },
-    ],
-  },
-  {
-    id: '2',
-    modelo: 'MT-03',
-    fabricante: 'Yamaha',
-    ano: 2023,
-    cor: 'Azul',
-    valor: 32000,
-    status: 'estoque',
-    imagem: 'https://img.usecurling.com/p/300/200?q=yamaha%20mt03&color=blue',
-    kmAtual: 5000,
-    chassis: '9C2JP8580KR005678',
-    dataLicenciamento: new Date().toISOString().split('T')[0], // For testing "Current Month"
-    historicoAquisicao: [
-      {
-        id: 'aq2',
-        data: '2023-12-01',
-        valor: 28000,
-        vendedor: 'José da Silva',
-        km: 5000,
-        consignacao: true,
-      },
-    ],
+    historicoAquisicao: [],
   },
   {
     id: '3',
@@ -107,18 +108,7 @@ const INITIAL_MOTOS: Moto[] = [
     placa: 'ABC-1234',
     imagem: 'https://img.usecurling.com/p/300/200?q=honda%20cb500x&color=green',
     kmAtual: 12000,
-    chassis: '9C2JP8580KR009012',
-    dataLicenciamento: '2025-05-20',
-    historicoAquisicao: [
-      {
-        id: 'aq3',
-        data: '2023-11-15',
-        valor: 38000,
-        vendedor: 'Leilão SP',
-        km: 11000,
-        consignacao: false,
-      },
-    ],
+    historicoAquisicao: [],
   },
 ]
 
@@ -136,24 +126,6 @@ const INITIAL_CLIENTES: Cliente[] = [
     estado: 'SP',
     cep: '01234-567',
     genero: 'masculino',
-    prof_empresa: 'Tech Solutions',
-    prof_cargo: 'Desenvolvedor',
-  },
-  {
-    id: '2',
-    nome: 'Maria Oliveira',
-    cpf: '987.654.321-00',
-    telefone: '(21) 91234-5678',
-    email: 'maria@email.com',
-    endereco: 'Av B, 456',
-    bairro: 'Copacabana',
-    complemento: '',
-    cidade: 'Rio de Janeiro',
-    estado: 'RJ',
-    cep: '20000-000',
-    genero: 'feminino',
-    prof_empresa: 'Loja de Roupas',
-    prof_cargo: 'Gerente',
   },
 ]
 
@@ -188,20 +160,66 @@ const INITIAL_FINANCIAMENTOS: Financiamento[] = [
 ]
 
 const INITIAL_EMPRESA: Empresa = {
-  nome: 'MotoFin Dealership',
+  nome: 'Fenix Moto',
   cnpj: '00.000.000/0000-00',
   endereco: 'Av. das Motos, 1000 - Centro',
   telefone: '(11) 3333-4444',
   telefone2: '',
   telefone3: '',
-  email: 'contato@motofin.com',
+  email: 'contato@fenixmoto.com.br',
   logo: 'https://img.usecurling.com/i?q=motorcycle&shape=outline&color=black',
-  instagram: 'https://instagram.com/motofin',
-  facebook: 'https://facebook.com/motofin',
-  x: 'https://x.com/motofin',
-  tiktok: '',
-  website: 'https://motofin.com.br',
+  instagram: 'https://instagram.com/fenixmoto',
+  website: 'https://fenixmoto.com.br',
 }
+
+const INITIAL_USUARIOS: Usuario[] = [
+  {
+    id: '1',
+    nome: 'Webmaster',
+    email: 'webmaster@fenixmoto.com.br',
+    senha: '26843831', // In a real app, never store plain text passwords
+    role: 'Administrador',
+    ativo: true,
+  },
+]
+
+const INITIAL_PECAS: Peca[] = [
+  {
+    id: '1',
+    codigo: 'OLEO001',
+    nome: 'Óleo Motor 10W30',
+    descricao: 'Óleo Semissintético',
+    quantidade: 50,
+    precoCusto: 25,
+    precoVenda: 45,
+  },
+  {
+    id: '2',
+    codigo: 'FILT002',
+    nome: 'Filtro de Ar CG',
+    descricao: 'Para CG 160',
+    quantidade: 20,
+    precoCusto: 15,
+    precoVenda: 30,
+  },
+]
+
+const INITIAL_SERVICOS: Servico[] = [
+  {
+    id: '1',
+    nome: 'Troca de Óleo',
+    descricao: 'Mão de obra troca simples',
+    valor: 20,
+    comissao: 5,
+  },
+  {
+    id: '2',
+    nome: 'Revisão Geral',
+    descricao: 'Revisão completa',
+    valor: 250,
+    comissao: 50,
+  },
+]
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [motos, setMotos] = useState<Moto[]>(INITIAL_MOTOS)
@@ -210,6 +228,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
     INITIAL_FINANCIAMENTOS,
   )
   const [empresa, setEmpresa] = useState<Empresa>(INITIAL_EMPRESA)
+  const [usuarios, setUsuarios] = useState<Usuario[]>(INITIAL_USUARIOS)
+  const [pecas, setPecas] = useState<Peca[]>(INITIAL_PECAS)
+  const [servicos, setServicos] = useState<Servico[]>(INITIAL_SERVICOS)
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([])
+  const [currentUser, setCurrentUser] = useState<Usuario | null>(null)
+
+  // Auth
+  const login = (email: string, pass: string) => {
+    const user = usuarios.find(
+      (u) => u.email === email && u.senha === pass && u.ativo,
+    )
+    if (user) {
+      setCurrentUser(user)
+      return true
+    }
+    return false
+  }
+
+  const logout = () => {
+    setCurrentUser(null)
+  }
 
   // Calculate penalties on mount and when needed
   const refreshPenalties = () => {
@@ -253,10 +292,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshPenalties()
-    const interval = setInterval(refreshPenalties, 60000) // Check every minute
+    const interval = setInterval(refreshPenalties, 60000)
     return () => clearInterval(interval)
   }, [])
 
+  // CRUD Motos
   const addMoto = (motoData: Omit<Moto, 'id' | 'status'>) => {
     const newMoto: Moto = {
       ...motoData,
@@ -289,6 +329,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Sucesso', description: 'Moto removida.' })
   }
 
+  // CRUD Clientes
   const addCliente = (clienteData: Omit<Cliente, 'id'>) => {
     if (clientes.some((c) => c.cpf === clienteData.cpf)) {
       toast({
@@ -311,6 +352,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Sucesso', description: 'Dados do cliente atualizados.' })
   }
 
+  // CRUD Financiamentos
   const addFinanciamento = (
     data: Omit<Financiamento, 'id' | 'status' | 'parcelas'>,
   ) => {
@@ -330,7 +372,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       status: 'pendente',
     }))
 
-    // Generate numeric ID
     const maxId = financiamentos.reduce((max, f) => {
       const numId = parseInt(f.id)
       return !isNaN(numId) && numId > max ? numId : max
@@ -345,12 +386,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
 
     setFinanciamentos([...financiamentos, newFinanciamento])
-
-    // Update Moto Status
     setMotos((prev) =>
       prev.map((m) => (m.id === data.motoId ? { ...m, status: 'vendida' } : m)),
     )
-
     toast({
       title: 'Sucesso',
       description: 'Financiamento criado com sucesso!',
@@ -361,10 +399,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setFinanciamentos((prev) => {
       const oldFinanciamento = prev.find((f) => f.id === id)
       if (!oldFinanciamento) return prev
-
-      // Check if Moto changed
       if (data.motoId && data.motoId !== oldFinanciamento.motoId) {
-        // Swap Status
         setMotos((currentMotos) =>
           currentMotos.map((m) => {
             if (m.id === oldFinanciamento.motoId)
@@ -374,7 +409,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }),
         )
       }
-
       return prev.map((f) => (f.id === id ? { ...f, ...data } : f))
     })
     toast({ title: 'Sucesso', description: 'Financiamento atualizado.' })
@@ -382,16 +416,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const registerPayment = (
     financiamentoId: string,
-    parcelaNumero: number,
+    parcelNumero: number,
     dataPagamento: string,
     valorPago: number,
   ) => {
     setFinanciamentos((prev) =>
       prev.map((fin) => {
         if (fin.id !== financiamentoId) return fin
-
         const updatedParcelas = fin.parcelas.map((p) => {
-          if (p.numero === parcelaNumero) {
+          if (p.numero === parcelNumero) {
             return {
               ...p,
               status: 'paga' as ParcelaStatus,
@@ -401,9 +434,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }
           return p
         })
-
         const allPaid = updatedParcelas.every((p) => p.status === 'paga')
-
         return {
           ...fin,
           parcelas: updatedParcelas,
@@ -413,13 +444,162 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
     toast({
       title: 'Pagamento Registrado',
-      description: `Parcela ${parcelaNumero} quitada com sucesso.`,
+      description: `Parcela ${parcelNumero} quitada com sucesso.`,
     })
   }
 
   const updateEmpresa = (data: Empresa) => {
     setEmpresa(data)
     toast({ title: 'Sucesso', description: 'Dados da empresa atualizados.' })
+  }
+
+  // CRUD Usuarios
+  const addUsuario = (userData: Omit<Usuario, 'id'>) => {
+    const newUser = { ...userData, id: Math.random().toString(36).substr(2, 9) }
+    setUsuarios([...usuarios, newUser])
+    toast({ title: 'Sucesso', description: 'Usuário criado.' })
+  }
+
+  const updateUsuario = (id: string, data: Partial<Usuario>) => {
+    setUsuarios(usuarios.map((u) => (u.id === id ? { ...u, ...data } : u)))
+    toast({ title: 'Sucesso', description: 'Usuário atualizado.' })
+  }
+
+  const deleteUsuario = (id: string) => {
+    if (usuarios.length <= 1) {
+      toast({
+        title: 'Erro',
+        description: 'Não é possível remover o último usuário.',
+        variant: 'destructive',
+      })
+      return
+    }
+    setUsuarios(usuarios.filter((u) => u.id !== id))
+    toast({ title: 'Sucesso', description: 'Usuário removido.' })
+  }
+
+  // CRUD Pecas
+  const addPeca = (data: Omit<Peca, 'id'>) => {
+    const newPeca = { ...data, id: Math.random().toString(36).substr(2, 9) }
+    setPecas([...pecas, newPeca])
+    toast({ title: 'Sucesso', description: 'Peça cadastrada.' })
+  }
+
+  const updatePeca = (id: string, data: Partial<Peca>) => {
+    setPecas(pecas.map((p) => (p.id === id ? { ...p, ...data } : p)))
+    toast({ title: 'Sucesso', description: 'Peça atualizada.' })
+  }
+
+  const deletePeca = (id: string) => {
+    setPecas(pecas.filter((p) => p.id !== id))
+    toast({ title: 'Sucesso', description: 'Peça removida.' })
+  }
+
+  const importPecasXML = (xmlContent: string) => {
+    // Simple mock parser looking for standard tags
+    const parser = new DOMParser()
+    const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
+
+    // Attempt to find items
+    // Typical NFe structure: <det> -> <prod>
+    const dets = xmlDoc.getElementsByTagName('det')
+    let importedCount = 0
+    const newPecasToAdd: Peca[] = []
+
+    if (dets.length > 0) {
+      for (let i = 0; i < dets.length; i++) {
+        const prod = dets[i].getElementsByTagName('prod')[0]
+        if (prod) {
+          const codigo =
+            prod.getElementsByTagName('cProd')[0]?.textContent ||
+            `IMP-${Math.random().toString(36).substr(2, 5)}`
+          const nome =
+            prod.getElementsByTagName('xProd')[0]?.textContent ||
+            'Produto Importado'
+          const qtd = parseFloat(
+            prod.getElementsByTagName('qCom')[0]?.textContent || '0',
+          )
+          const valor = parseFloat(
+            prod.getElementsByTagName('vUnCom')[0]?.textContent || '0',
+          )
+
+          newPecasToAdd.push({
+            id: Math.random().toString(36).substr(2, 9),
+            codigo,
+            nome,
+            descricao: 'Importado via XML',
+            quantidade: qtd,
+            precoCusto: valor,
+            precoVenda: valor * 1.5, // Mock markup
+          })
+          importedCount++
+        }
+      }
+    } else {
+      // Fallback for simple structure or demo
+      const items = xmlDoc.getElementsByTagName('item')
+      for (let i = 0; i < items.length; i++) {
+        const nome =
+          items[i].getElementsByTagName('name')[0]?.textContent || 'Item'
+        newPecasToAdd.push({
+          id: Math.random().toString(36).substr(2, 9),
+          codigo: `XML-${i}`,
+          nome,
+          descricao: 'Importado',
+          quantidade: 10,
+          precoCusto: 10,
+          precoVenda: 20,
+        })
+        importedCount++
+      }
+    }
+
+    if (importedCount > 0) {
+      setPecas([...pecas, ...newPecasToAdd])
+      toast({
+        title: 'Importação Concluída',
+        description: `${importedCount} itens importados com sucesso.`,
+      })
+    } else {
+      toast({
+        title: 'Erro na Importação',
+        description: 'Nenhum item válido encontrado no XML.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  // CRUD Servicos
+  const addServico = (data: Omit<Servico, 'id'>) => {
+    setServicos([
+      ...servicos,
+      { ...data, id: Math.random().toString(36).substr(2, 9) },
+    ])
+    toast({ title: 'Sucesso', description: 'Serviço cadastrado.' })
+  }
+
+  const updateServico = (id: string, data: Partial<Servico>) => {
+    setServicos(servicos.map((s) => (s.id === id ? { ...s, ...data } : s)))
+    toast({ title: 'Sucesso', description: 'Serviço atualizado.' })
+  }
+
+  const deleteServico = (id: string) => {
+    setServicos(servicos.filter((s) => s.id !== id))
+    toast({ title: 'Sucesso', description: 'Serviço removido.' })
+  }
+
+  // CRUD Orcamentos
+  const addOrcamento = (data: Omit<Orcamento, 'id'>) => {
+    setOrcamentos([
+      ...orcamentos,
+      { ...data, id: Math.random().toString(36).substr(2, 9) },
+    ])
+    toast({ title: 'Sucesso', description: 'Orçamento criado.' })
+  }
+
+  const updateOrcamento = (id: string, data: Partial<Orcamento>) => {
+    setOrcamentos(orcamentos.map((o) => (o.id === id ? { ...o, ...data } : o)))
+    toast({ title: 'Sucesso', description: 'Orçamento atualizado.' })
   }
 
   return (
@@ -429,6 +609,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         clientes,
         financiamentos,
         empresa,
+        usuarios,
+        pecas,
+        servicos,
+        orcamentos,
+        currentUser,
+        login,
+        logout,
         addMoto,
         updateMoto,
         deleteMoto,
@@ -439,6 +626,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         registerPayment,
         refreshPenalties,
         updateEmpresa,
+        addUsuario,
+        updateUsuario,
+        deleteUsuario,
+        addPeca,
+        updatePeca,
+        deletePeca,
+        importPecasXML,
+        addServico,
+        updateServico,
+        deleteServico,
+        addOrcamento,
+        updateOrcamento,
       }}
     >
       {children}

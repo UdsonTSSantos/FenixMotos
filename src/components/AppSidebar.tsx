@@ -1,4 +1,15 @@
-import { Bike, Users, FileText, LayoutDashboard, Building2 } from 'lucide-react'
+import {
+  Bike,
+  Users,
+  FileText,
+  LayoutDashboard,
+  Building2,
+  Wrench,
+  Package,
+  FileSpreadsheet,
+  Shield,
+  BarChart3,
+} from 'lucide-react'
 import {
   Sidebar,
   SidebarContent,
@@ -13,41 +24,36 @@ import {
 } from '@/components/ui/sidebar'
 import { Link, useLocation } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
-
-const items = [
-  {
-    title: 'Dashboard',
-    url: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Motos',
-    url: '/motos',
-    icon: Bike,
-  },
-  {
-    title: 'Clientes',
-    url: '/clientes',
-    icon: Users,
-  },
-  {
-    title: 'Financiamentos',
-    url: '/financiamentos',
-    icon: FileText,
-  },
-  {
-    title: 'Empresa',
-    url: '/empresa',
-    icon: Building2,
-  },
-]
+import { Button } from '@/components/ui/button'
+import { LogOut } from 'lucide-react'
 
 export function AppSidebar() {
   const location = useLocation()
-  const { empresa } = useData()
+  const { empresa, currentUser, logout } = useData()
+
+  // Dynamic items based on role could be implemented here
+  // For now, show all but maybe restrict access in routes or visually here
+  const items = [
+    { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+    { title: 'Motos', url: '/motos', icon: Bike },
+    { title: 'Clientes', url: '/clientes', icon: Users },
+    { title: 'Financiamentos', url: '/financiamentos', icon: FileText },
+    { title: 'Orçamentos', url: '/orcamentos', icon: FileSpreadsheet },
+    { title: 'Peças', url: '/pecas', icon: Package },
+    { title: 'Serviços', url: '/servicos', icon: Wrench },
+    { title: 'Empresa', url: '/empresa', icon: Building2 },
+  ]
+
+  const adminItems = [
+    { title: 'Usuários', url: '/usuarios', icon: Shield },
+    { title: 'Comissões', url: '/relatorios/comissoes', icon: BarChart3 },
+  ]
+
+  const allowedAdminRoles = ['Administrador', 'Diretor', 'Gerente']
+  const isAdmin = currentUser && allowedAdminRoles.includes(currentUser.role)
 
   return (
-    <Sidebar>
+    <Sidebar className="print:hidden">
       <SidebarHeader className="p-4 border-b">
         <div className="flex items-center gap-2">
           {empresa.logo && (
@@ -93,17 +99,51 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administração</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={location.pathname.startsWith(item.url)}
+                      tooltip={item.title}
+                    >
+                      <Link to={item.url} className="flex items-center gap-3">
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-4 border-t">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-            <span className="font-medium">AD</span>
+        <div className="flex items-center gap-3 text-sm text-muted-foreground mb-3">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center uppercase">
+            {currentUser?.nome.substring(0, 2)}
           </div>
-          <div className="flex flex-col">
-            <span className="font-medium text-foreground">Admin User</span>
-            <span className="text-xs">admin@motofin.com</span>
+          <div className="flex flex-col overflow-hidden">
+            <span className="font-medium text-foreground truncate">
+              {currentUser?.nome}
+            </span>
+            <span className="text-xs truncate">{currentUser?.role}</span>
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start"
+          onClick={logout}
+        >
+          <LogOut className="mr-2 h-4 w-4" /> Sair
+        </Button>
       </SidebarFooter>
     </Sidebar>
   )

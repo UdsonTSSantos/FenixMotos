@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 
 export default function Index() {
-  const { motos, financiamentos } = useData()
+  const { motos, financiamentos, empresa } = useData()
 
   // Metrics
   const stockCount = motos.filter((m) => m.status === 'estoque').length
@@ -70,7 +70,9 @@ export default function Index() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {empresa.nome || 'Dashboard'}
+        </h1>
         <Button asChild variant="outline">
           <Link to="/empresa">
             <Building2 className="mr-2 h-4 w-4" /> Empresa

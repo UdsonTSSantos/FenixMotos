@@ -39,8 +39,8 @@ export default function FinanciamentoExtrato() {
       : financiamento.valorFinanciado / financiamento.quantidadeParcelas
 
   return (
-    <div className="bg-white min-h-screen p-8 text-black">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="bg-white min-h-screen p-8 text-black print:p-0">
+      <div className="max-w-[210mm] mx-auto space-y-8 print:w-full print:max-w-none">
         {/* Header / Actions */}
         <div className="flex justify-end print:hidden">
           <Button onClick={handlePrint}>
@@ -128,54 +128,70 @@ export default function FinanciamentoExtrato() {
         </div>
 
         {/* Financial Summary */}
-        <div className="bg-gray-100 p-4 rounded border border-gray-300">
+        <div className="bg-gray-100 p-4 rounded border border-gray-300 print:bg-transparent print:border-black">
           <h3 className="font-bold mb-2">RESUMO DO CONTRATO</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <span className="block text-gray-500">Valor Total</span>
+              <span className="block text-gray-500 print:text-black">
+                Valor Total
+              </span>
               <span className="font-bold">
                 {formatCurrency(financiamento.valorTotal)}
               </span>
             </div>
             <div>
-              <span className="block text-gray-500">Entrada</span>
+              <span className="block text-gray-500 print:text-black">
+                Entrada
+              </span>
               <span className="font-bold">
                 {formatCurrency(financiamento.valorEntrada)}
               </span>
             </div>
             <div>
-              <span className="block text-gray-500">Financiado</span>
+              <span className="block text-gray-500 print:text-black">
+                Financiado
+              </span>
               <span className="font-bold">
                 {formatCurrency(financiamento.valorFinanciado)}
               </span>
             </div>
             <div>
-              <span className="block text-gray-500">Status</span>
+              <span className="block text-gray-500 print:text-black">
+                Status
+              </span>
               <span className="font-bold uppercase">
                 {financiamento.status}
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-4 border-t border-gray-300 pt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-4 border-t border-gray-300 print:border-black pt-4">
             <div>
-              <span className="block text-gray-500">Valor da Parcela</span>
+              <span className="block text-gray-500 print:text-black">
+                Valor da Parcela
+              </span>
               <span className="font-bold">{formatCurrency(valorParcela)}</span>
             </div>
             <div>
-              <span className="block text-gray-500">Taxa Juros (Atraso)</span>
+              <span className="block text-gray-500 print:text-black">
+                Taxa Juros (Atraso)
+              </span>
               <span className="font-bold">
                 {financiamento.taxaJurosAtraso}% a.d.
               </span>
             </div>
             <div>
-              <span className="block text-gray-500">Multa (Atraso)</span>
+              <span className="block text-gray-500 print:text-black">
+                Multa (Atraso)
+              </span>
               <span className="font-bold">
                 {formatCurrency(financiamento.valorMultaAtraso)}
               </span>
             </div>
             {financiamento.taxaFinanciamento !== undefined && (
               <div>
-                <span className="block text-gray-500">Taxa Financiamento</span>
+                <span className="block text-gray-500 print:text-black">
+                  Taxa Financiamento
+                </span>
                 <span className="font-bold">
                   {financiamento.taxaFinanciamento}%
                 </span>
@@ -189,8 +205,8 @@ export default function FinanciamentoExtrato() {
           <h3 className="font-bold border-b border-black mb-4 pb-1">
             DETALHAMENTO DAS PARCELAS
           </h3>
-          <Table className="border border-gray-200">
-            <TableHeader className="bg-gray-50">
+          <Table className="border border-gray-200 print:border-black">
+            <TableHeader className="bg-gray-50 print:bg-transparent">
               <TableRow>
                 <TableHead className="text-black font-bold">Nº</TableHead>
                 <TableHead className="text-black font-bold">
@@ -237,8 +253,19 @@ export default function FinanciamentoExtrato() {
           </Table>
         </div>
 
+        {financiamento.observacao && (
+          <div>
+            <h3 className="font-bold border-b border-black mb-2 pb-1">
+              OBSERVAÇÕES
+            </h3>
+            <p className="text-sm whitespace-pre-wrap">
+              {financiamento.observacao}
+            </p>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="mt-12 text-center text-xs text-gray-500 pt-4 border-t">
+        <div className="mt-12 text-center text-xs text-gray-500 pt-4 border-t print:text-black print:border-black">
           <div className="flex justify-center flex-wrap gap-6 mb-2 font-medium">
             {empresa.website && <span>{empresa.website}</span>}
             {empresa.instagram && (

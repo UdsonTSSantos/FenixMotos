@@ -10,28 +10,62 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Search, Edit } from 'lucide-react'
+import { Plus, Search, Edit, FileDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function Clientes() {
   const { clientes } = useData()
   const [filter, setFilter] = useState('')
 
-  const filteredClientes = clientes.filter(
-    (cliente) =>
-      cliente.nome.toLowerCase().includes(filter.toLowerCase()) ||
-      cliente.cpf.includes(filter),
-  )
+  const filteredClientes = clientes
+    .filter(
+      (cliente) =>
+        cliente.nome.toLowerCase().includes(filter.toLowerCase()) ||
+        cliente.cpf.includes(filter),
+    )
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+
+  const exportToExcel = () => {
+    // Generate CSV content
+    const headers = ['Nome', 'Telefone/Celular', 'Email', 'Gênero']
+    const rows = filteredClientes.map((c) => [
+      c.nome,
+      c.telefone,
+      c.email,
+      c.genero || '-',
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n')
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'clientes.csv')
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Clientes</h1>
-        <Button asChild>
-          <Link to="/clientes/novo">
-            <Plus className="mr-2 h-4 w-4" /> Novo Cliente
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToExcel}>
+            <FileDown className="mr-2 h-4 w-4" /> Exportar Lista
+          </Button>
+          <Button asChild>
+            <Link to="/clientes/novo">
+              <Plus className="mr-2 h-4 w-4" /> Novo Cliente
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center">
@@ -53,7 +87,8 @@ export default function Clientes() {
               <TableHead>Nome</TableHead>
               <TableHead>CPF</TableHead>
               <TableHead>Telefone</TableHead>
-              <TableHead>Cidade/UF</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Gênero</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -63,8 +98,9 @@ export default function Clientes() {
                 <TableCell className="font-medium">{cliente.nome}</TableCell>
                 <TableCell>{cliente.cpf}</TableCell>
                 <TableCell>{cliente.telefone}</TableCell>
-                <TableCell>
-                  {cliente.cidade} / {cliente.estado}
+                <TableCell>{cliente.email}</TableCell>
+                <TableCell className="capitalize">
+                  {cliente.genero || '-'}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" asChild>
@@ -78,7 +114,7 @@ export default function Clientes() {
             {filteredClientes.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhum cliente encontrado.

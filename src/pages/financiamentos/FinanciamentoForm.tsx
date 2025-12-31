@@ -32,6 +32,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { parseCurrency, formatCurrency } from '@/lib/utils'
 import { addMonths, parseISO } from 'date-fns'
+import { Textarea } from '@/components/ui/textarea'
 
 const formSchema = z.object({
   motoId: z.string().min(1, 'Selecione uma moto'),
@@ -42,6 +43,7 @@ const formSchema = z.object({
   valorMultaAtraso: z.string().min(1, 'Informe a multa'),
   taxaFinanciamento: z.coerce.number().min(0).default(0),
   valorParcela: z.string().min(1, 'Valor da parcela obrigatório'),
+  observacao: z.string().optional(),
 })
 
 export default function FinanciamentoForm() {
@@ -58,8 +60,6 @@ export default function FinanciamentoForm() {
   const isEditing = !!id
   const existingFinanciamento = financiamentos.find((f) => f.id === id)
 
-  // In edit mode, we can select any moto (stock OR the current one)
-  // In create mode, only stock motos
   const motosDisponiveis = motos.filter(
     (m) =>
       m.status === 'estoque' ||
@@ -80,14 +80,13 @@ export default function FinanciamentoForm() {
       valorMultaAtraso: 'R$ 50,00',
       taxaFinanciamento: 0,
       valorParcela: 'R$ 0,00',
+      observacao: '',
     },
   })
 
-  // Load existing data
   useEffect(() => {
     if (isEditing && existingFinanciamento) {
       setSelectedMotoId(existingFinanciamento.motoId)
-      // Calculate average parcel value to show
       const parcelValue =
         existingFinanciamento.parcelas.length > 0
           ? existingFinanciamento.parcelas[0].valorOriginal
@@ -104,9 +103,8 @@ export default function FinanciamentoForm() {
         ),
         taxaFinanciamento: existingFinanciamento.taxaFinanciamento || 0,
         valorParcela: formatCurrency(parcelValue),
+        observacao: existingFinanciamento.observacao || '',
       })
-      // Initially, we treat loaded value as calculated unless user changes it.
-      // But for faithfulness to "Manual Input", we allow editing.
     }
   }, [isEditing, existingFinanciamento, form])
 
@@ -117,9 +115,8 @@ export default function FinanciamentoForm() {
   const watchTaxaFinanciamento = form.watch('taxaFinanciamento')
   const watchValorParcela = form.watch('valorParcela')
 
-  // Auto-calculation Effect
   useEffect(() => {
-    if (isManualParcel) return // Don't overwrite if manual
+    if (isManualParcel) return
 
     if (!selectedMoto) return
 
@@ -127,19 +124,6 @@ export default function FinanciamentoForm() {
     const principal = Math.max(0, selectedMoto.valor - entradaValue)
     const count = watchParcelas || 1
     const rate = watchTaxaFinanciamento || 0
-
-    // Simple Interest Calculation for Recalculation Requirement
-    // Formula: (Principal / Months) * (1 + Rate/100)
-    // Or just Principal + Interest / Months
-    // Let's use: (Principal * (1 + (Rate/100))) / Count  <-- Total financing cost distributed
-    // Wait, usually Rate is monthly.
-    // Let's use standard simple monthly interest approximation for simplicity in this demo:
-    // Base Parcel = Principal / Count
-    // Interest Part = Base Parcel * (Rate / 100)
-    // Total Parcel = Base Parcel + Interest Part
-
-    // HOWEVER, the prompt implies "Juros" (Interest) and "Multa" (Penalty) changes trigger recalculation.
-    // "Multa" usually doesn't affect parcel. But let's assume `taxaFinanciamento` is the key.
 
     const baseParcel = principal / count
     const interestPart = baseParcel * (rate / 100)
@@ -152,15 +136,7 @@ export default function FinanciamentoForm() {
         shouldValidate: true,
       })
     }
-  }, [
-    selectedMoto,
-    watchEntrada,
-    watchParcelas,
-    watchTaxaFinanciamento,
-    // Note: We don't depend on watchMultaAtraso or watchTaxaJurosAtraso for parcel value
-    // because that would be financially incorrect (late fees don't change base installment).
-    // The requirement "Changing Juros... triggers recalculation" is satisfied by `taxaFinanciamento` (Juros do Financiamento).
-  ])
+  }, [selectedMoto, watchEntrada, watchParcelas, watchTaxaFinanciamento])
 
   const handleManualParcelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsManualParcel(true)
@@ -183,7 +159,6 @@ export default function FinanciamentoForm() {
     const total = entrada + parcelaVal * values.quantidadeParcelas
     const financiado = total - entrada
 
-    // Regenerate parcels
     const today = new Date()
     const contractDate =
       isEditing && existingFinanciamento
@@ -212,6 +187,7 @@ export default function FinanciamentoForm() {
       taxaJurosAtraso: values.taxaJurosAtraso,
       valorMultaAtraso: parseCurrency(values.valorMultaAtraso),
       taxaFinanciamento: values.taxaFinanciamento,
+      observacao: values.observacao,
       parcelas: newParcelas,
     }
 
@@ -261,7 +237,7 @@ export default function FinanciamentoForm() {
                           onValueChange={(val) => {
                             field.onChange(val)
                             setSelectedMotoId(val)
-                            setIsManualParcel(false) // Reset manual override on moto change to recalc
+                            setIsManualParcel(false)
                           }}
                           value={field.value}
                         >
@@ -446,6 +422,24 @@ export default function FinanciamentoForm() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="observacao"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            placeholder="Anote detalhes relevantes do contrato aqui..."
+                            className="min-h-[100px]"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-4">

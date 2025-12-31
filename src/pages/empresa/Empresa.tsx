@@ -211,7 +211,7 @@ export default function Empresa() {
                     name="telefone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefone 1</FormLabel>
+                        <FormLabel>Telefone</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -230,7 +230,7 @@ export default function Empresa() {
                     name="telefone2"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefone 2</FormLabel>
+                        <FormLabel>Celular</FormLabel>
                         <FormControl>
                           <Input
                             {...field}
@@ -249,7 +249,7 @@ export default function Empresa() {
                     name="telefone3"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Telefone 3</FormLabel>
+                        <FormLabel>Celular 2</FormLabel>
                         <FormControl>
                           <Input
                             {...field}

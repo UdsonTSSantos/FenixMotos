@@ -16,22 +16,13 @@ export interface Moto {
   ano: number
   cor: string
   placa?: string
-  chassis?: string // New field
-  dataLicenciamento?: string // New field (ISO Date)
+  chassis?: string
+  dataLicenciamento?: string // ISO Date
   valor: number
   status: MotoStatus
   imagem?: string
   kmAtual?: number
-  // Historico de Aquisicoes replaces static fields
   historicoAquisicao: Aquisicao[]
-
-  // Deprecated fields kept optional for backward compatibility if needed,
-  // but logic should rely on historicoAquisicao
-  compra_vendedor?: string
-  compra_valor?: number
-  compra_data?: string
-  compra_km?: number
-  consignacao?: boolean
 }
 
 export interface Cliente {
@@ -44,21 +35,20 @@ export interface Cliente {
   cidade: string
   estado: string
   cep: string
-  // New Address Fields
   complemento?: string
   bairro?: string
-  // Advanced Profiling
   rg?: string
   dataNascimento?: string // ISO Date
   genero?: 'masculino' | 'feminino' | 'outro'
-  // Professional Information
+  cnh?: string
+  cnhValidade?: string // ISO Date
   prof_empresa?: string
   prof_endereco?: string
   prof_telefone?: string
   prof_email?: string
   prof_cnpj?: string
   prof_cargo?: string
-  prof_tempo?: string // e.g., "2 anos"
+  prof_tempo?: string
   prof_salario?: number
   prof_supervisor?: string
 }
@@ -74,9 +64,10 @@ export interface Financiamento {
   valorEntrada: number
   valorFinanciado: number
   quantidadeParcelas: number
-  taxaJurosAtraso: number // Percentage per day/month for delay
-  valorMultaAtraso: number // Fixed value for delay
-  taxaFinanciamento?: number // New: Percentage added to base financing (monthly or total)
+  taxaJurosAtraso: number
+  valorMultaAtraso: number
+  taxaFinanciamento?: number
+  observacao?: string
   status: FinanciamentoStatus
   parcelas: Parcela[]
 }
@@ -103,12 +94,76 @@ export interface Empresa {
   telefone3?: string
   email: string
   logo: string
-  // Social Media
   instagram?: string
   facebook?: string
   x?: string
   tiktok?: string
   website?: string
+}
+
+export type UserRole =
+  | 'Administrador'
+  | 'Diretor'
+  | 'Gerente'
+  | 'Supervisor'
+  | 'Vendedor'
+  | 'Mecânico'
+  | 'Financeiro'
+
+export interface Usuario {
+  id: string
+  nome: string
+  email: string
+  senha?: string // In a real app this would be hashed or handled by auth provider
+  role: UserRole
+  ativo: boolean
+}
+
+export interface Peca {
+  id: string
+  codigo: string
+  nome: string
+  descricao: string
+  quantidade: number
+  precoCusto: number
+  precoVenda: number
+  localizacao?: string
+}
+
+export interface Servico {
+  id: string
+  nome: string
+  descricao: string
+  valor: number
+  comissao: number // Fixed value or percentage? User story says "Commission value", implies fixed or %? "3% of parts" is specific to parts. Let's assume fixed value for services for now, or allow % logic.
+}
+
+export type OrcamentoStatus = 'aberto' | 'aprovado' | 'rejeitado'
+
+export interface OrcamentoItem {
+  id: string
+  tipo: 'peca' | 'servico'
+  referenciaId: string // id of Peca or Servico
+  nome: string
+  quantidade: number
+  valorUnitario: number
+  valorTotal: number
+}
+
+export interface Orcamento {
+  id: string
+  clienteId: string // Optional if prospect? Let's assume registered cliente for now or generic string
+  clienteNome?: string // For quick display or unregistered
+  vendedorId: string
+  data: string // ISO Date
+  validade: string // ISO Date
+  itens: OrcamentoItem[]
+  valorTotalPecas: number
+  valorTotalServicos: number
+  valorTotal: number
+  comissaoVendedor: number
+  status: OrcamentoStatus
+  observacao?: string
 }
 
 export const FABRICANTES = [
@@ -159,3 +214,13 @@ export const ESTADOS_BR = [
   'SE',
   'TO',
 ] as const
+
+export const USER_ROLES: UserRole[] = [
+  'Administrador',
+  'Diretor',
+  'Gerente',
+  'Supervisor',
+  'Vendedor',
+  'Mecânico',
+  'Financeiro',
+]

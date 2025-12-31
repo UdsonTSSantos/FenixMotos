@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { ESTADOS_BR } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,16 @@ import {
   parseCurrency,
 } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Eye, Edit } from 'lucide-react'
 
 const formSchema = z.object({
   // Personal Info
@@ -48,6 +58,8 @@ const formSchema = z.object({
   cidade: z.string().min(2, 'Cidade obrigatória'),
   estado: z.string().length(2, 'Selecione um estado'),
   cep: z.string().min(9, 'CEP inválido'),
+  cnh: z.string().optional(),
+  cnhValidade: z.string().optional(),
 
   // Professional Info
   prof_empresa: z.string().optional(),
@@ -64,10 +76,16 @@ const formSchema = z.object({
 export default function ClienteForm() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { clientes, addCliente, updateCliente } = useData()
+  const { clientes, addCliente, updateCliente, financiamentos, motos } =
+    useData()
 
   const isEditing = !!id
   const existing = clientes.find((c) => c.id === id)
+
+  // Get customer motorcycles based on financing
+  const customerFinanciamentos = isEditing
+    ? financiamentos.filter((f) => f.clienteId === id)
+    : []
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -85,6 +103,8 @@ export default function ClienteForm() {
       cidade: '',
       estado: '',
       cep: '',
+      cnh: '',
+      cnhValidade: '',
       prof_empresa: '',
       prof_endereco: '',
       prof_telefone: '',
@@ -103,6 +123,8 @@ export default function ClienteForm() {
         ...existing,
         complemento: existing.complemento || '',
         bairro: existing.bairro || '',
+        cnh: existing.cnh || '',
+        cnhValidade: existing.cnhValidade || '',
         prof_salario: existing.prof_salario
           ? formatCurrency(existing.prof_salario)
           : '',
@@ -148,8 +170,10 @@ export default function ClienteForm() {
     form.setValue('prof_salario', formatCurrency(number))
   }
 
+  const getMotoDetails = (motoId: string) => motos.find((m) => m.id === motoId)
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>
@@ -160,10 +184,13 @@ export default function ClienteForm() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="pessoal">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="pessoal">Dados Pessoais</TabsTrigger>
                   <TabsTrigger value="profissional">
                     Dados Profissionais
+                  </TabsTrigger>
+                  <TabsTrigger value="motos" disabled={!isEditing}>
+                    Motocicletas
                   </TabsTrigger>
                 </TabsList>
 
@@ -290,6 +317,35 @@ export default function ClienteForm() {
                               {...field}
                               placeholder="cliente@email.com"
                             />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* New CNH Fields */}
+                    <FormField
+                      control={form.control}
+                      name="cnh"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nº da Habilitação (CNH)</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="cnhValidade"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vencimento da Habilitação</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -544,6 +600,78 @@ export default function ClienteForm() {
                     />
                   </div>
                 </TabsContent>
+
+                {isEditing && (
+                  <TabsContent value="motos" className="space-y-4 pt-4">
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Modelo</TableHead>
+                            <TableHead>Cor</TableHead>
+                            <TableHead>Placa</TableHead>
+                            <TableHead>Status Contrato</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {customerFinanciamentos.map((fin) => {
+                            const moto = getMotoDetails(fin.motoId)
+                            if (!moto) return null
+                            return (
+                              <TableRow key={fin.id}>
+                                <TableCell className="font-medium">
+                                  {moto.modelo}
+                                </TableCell>
+                                <TableCell>{moto.cor}</TableCell>
+                                <TableCell>{moto.placa || '-'}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      fin.status === 'ativo'
+                                        ? 'outline'
+                                        : fin.status === 'quitado'
+                                          ? 'secondary'
+                                          : 'destructive'
+                                    }
+                                  >
+                                    {fin.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button variant="outline" size="sm" asChild>
+                                      <Link to={`/motos/${moto.id}`}>
+                                        <Edit className="mr-2 h-3 w-3" /> Editar
+                                        Moto
+                                      </Link>
+                                    </Button>
+                                    <Button variant="default" size="sm" asChild>
+                                      <Link to={`/financiamentos/${fin.id}`}>
+                                        <Eye className="mr-2 h-3 w-3" /> Ver
+                                        Financiamento
+                                      </Link>
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                          {customerFinanciamentos.length === 0 && (
+                            <TableRow>
+                              <TableCell
+                                colSpan={5}
+                                className="text-center py-8 text-muted-foreground"
+                              >
+                                Nenhuma moto adquirida por este cliente.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </TabsContent>
+                )}
               </Tabs>
 
               <div className="flex justify-end gap-4">

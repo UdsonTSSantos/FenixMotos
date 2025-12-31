@@ -74,7 +74,7 @@ export default function Layout() {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <main className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
-          <header className="h-16 border-b flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
+          <header className="h-16 border-b flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-20 print:hidden">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
               <Separator orientation="vertical" className="h-6" />
@@ -84,8 +84,11 @@ export default function Layout() {
               <ThemeToggle />
             </div>
           </header>
-          <div className="flex-1 overflow-auto p-6 scroll-smooth">
-            <div key={location.pathname} className="animate-fade-in">
+          <div className="flex-1 overflow-auto p-6 scroll-smooth print:p-0 print:overflow-visible">
+            <div
+              key={location.pathname}
+              className="animate-fade-in print:animate-none"
+            >
               <Outlet />
             </div>
           </div>
