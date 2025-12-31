@@ -164,8 +164,8 @@ const INITIAL_EMPRESA: Empresa = {
   cnpj: '00.000.000/0000-00',
   endereco: 'Av. das Motos, 1000 - Centro',
   telefone: '(11) 3333-4444',
-  telefone2: '',
-  telefone3: '',
+  telefone2: '(11) 9999-8888',
+  telefone3: '(11) 9777-6666',
   email: 'contato@fenixmoto.com.br',
   logo: 'https://img.usecurling.com/i?q=motorcycle&shape=outline&color=black',
   instagram: 'https://instagram.com/fenixmoto',
@@ -177,7 +177,7 @@ const INITIAL_USUARIOS: Usuario[] = [
     id: '1',
     nome: 'Webmaster',
     email: 'webmaster@fenixmoto.com.br',
-    senha: '26843831', // In a real app, never store plain text passwords
+    senha: '26843831',
     role: 'Administrador',
     ativo: true,
   },
@@ -210,14 +210,14 @@ const INITIAL_SERVICOS: Servico[] = [
     nome: 'Troca de Óleo',
     descricao: 'Mão de obra troca simples',
     valor: 20,
-    comissao: 5,
+    comissao: 25, // 25%
   },
   {
     id: '2',
     nome: 'Revisão Geral',
     descricao: 'Revisão completa',
     valor: 250,
-    comissao: 50,
+    comissao: 20, // 20%
   },
 ]
 
@@ -496,12 +496,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const importPecasXML = (xmlContent: string) => {
-    // Simple mock parser looking for standard tags
     const parser = new DOMParser()
     const xmlDoc = parser.parseFromString(xmlContent, 'text/xml')
 
-    // Attempt to find items
-    // Typical NFe structure: <det> -> <prod>
     const dets = xmlDoc.getElementsByTagName('det')
     let importedCount = 0
     const newPecasToAdd: Peca[] = []
@@ -530,13 +527,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
             descricao: 'Importado via XML',
             quantidade: qtd,
             precoCusto: valor,
-            precoVenda: valor * 1.5, // Mock markup
+            precoVenda: valor * 1.5,
           })
           importedCount++
         }
       }
     } else {
-      // Fallback for simple structure or demo
       const items = xmlDoc.getElementsByTagName('item')
       for (let i = 0; i < items.length; i++) {
         const nome =

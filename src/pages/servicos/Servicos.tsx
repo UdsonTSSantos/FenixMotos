@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 
@@ -45,7 +44,7 @@ export default function Servicos() {
       nome: newNome,
       descricao: newDesc,
       valor: parseCurrency(newValor),
-      comissao: parseCurrency(newComissao),
+      comissao: Number(newComissao.replace(',', '.')), // Keep as pure number for percentage
     })
     setIsAddOpen(false)
     setNewNome('')
@@ -90,7 +89,7 @@ export default function Servicos() {
               <TableHead>Nome</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Valor</TableHead>
-              <TableHead>Comissão</TableHead>
+              <TableHead>Comissão (%)</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -100,8 +99,8 @@ export default function Servicos() {
                 <TableCell className="font-medium">{servico.nome}</TableCell>
                 <TableCell>{servico.descricao}</TableCell>
                 <TableCell>{formatCurrency(servico.valor)}</TableCell>
-                <TableCell className="text-emerald-600">
-                  {formatCurrency(servico.comissao)}
+                <TableCell className="text-emerald-600 font-medium">
+                  {servico.comissao}%
                 </TableCell>
                 <TableCell className="text-right">
                   <Button
@@ -173,13 +172,16 @@ export default function Servicos() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="comissao" className="text-right">
-                Comissão
+                Comissão (%)
               </Label>
               <Input
                 id="comissao"
+                type="number"
+                min={0}
+                max={100}
                 value={newComissao}
-                onChange={handleCurrencyInput(setNewComissao)}
-                placeholder="R$ 0,00"
+                onChange={(e) => setNewComissao(e.target.value)}
+                placeholder="Ex: 10"
                 className="col-span-3"
               />
             </div>

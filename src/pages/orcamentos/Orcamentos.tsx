@@ -58,6 +58,7 @@ export default function Orcamentos() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Nº</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Cliente</TableHead>
               <TableHead>Vendedor</TableHead>
@@ -69,6 +70,9 @@ export default function Orcamentos() {
           <TableBody>
             {filteredOrcamentos.map((orc) => (
               <TableRow key={orc.id}>
+                <TableCell className="font-mono text-xs">
+                  {orc.id.substring(0, 8).toUpperCase()}
+                </TableCell>
                 <TableCell>{new Date(orc.data).toLocaleDateString()}</TableCell>
                 <TableCell className="font-medium">
                   {orc.clienteNome || getClienteName(orc.clienteId)}
@@ -94,7 +98,7 @@ export default function Orcamentos() {
             {filteredOrcamentos.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhum orçamento encontrado.

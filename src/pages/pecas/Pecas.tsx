@@ -10,8 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Search, Upload } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { Plus, Search, Upload, FileDown } from 'lucide-react'
+import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -23,15 +23,26 @@ import {
 import { Label } from '@/components/ui/label'
 
 export default function Pecas() {
-  const { pecas, importPecasXML } = useData()
+  const { pecas, importPecasXML, addPeca } = useData()
   const [filter, setFilter] = useState('')
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
 
-  const filteredPecas = pecas.filter(
-    (p) =>
-      p.nome.toLowerCase().includes(filter.toLowerCase()) ||
-      p.codigo.toLowerCase().includes(filter.toLowerCase()),
-  )
+  // Manual Add State
+  const [newCodigo, setNewCodigo] = useState('')
+  const [newNome, setNewNome] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newQtd, setNewQtd] = useState('')
+  const [newCusto, setNewCusto] = useState('')
+  const [newVenda, setNewVenda] = useState('')
+
+  const filteredPecas = pecas
+    .filter(
+      (p) =>
+        p.nome.toLowerCase().includes(filter.toLowerCase()) ||
+        p.codigo.toLowerCase().includes(filter.toLowerCase()),
+    )
+    .sort((a, b) => a.nome.localeCompare(b.nome))
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -46,15 +57,84 @@ export default function Pecas() {
     reader.readAsText(file)
   }
 
+  const handleAddManual = () => {
+    if (!newNome || !newVenda) return
+
+    addPeca({
+      codigo: newCodigo || `MAN-${Math.random().toString(36).substr(2, 4)}`,
+      nome: newNome,
+      descricao: newDesc,
+      quantidade: Number(newQtd),
+      precoCusto: parseCurrency(newCusto),
+      precoVenda: parseCurrency(newVenda),
+    })
+
+    setIsAddOpen(false)
+    setNewCodigo('')
+    setNewNome('')
+    setNewDesc('')
+    setNewQtd('')
+    setNewCusto('')
+    setNewVenda('')
+  }
+
+  const handleCurrencyInput =
+    (setter: React.Dispatch<React.SetStateAction<string>>) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value.replace(/\D/g, '')
+      const number = Number(raw) / 100
+      setter(formatCurrency(number))
+    }
+
+  const exportToExcel = () => {
+    // Basic CSV Export
+    const headers = [
+      'Código',
+      'Nome',
+      'Descrição',
+      'Quantidade',
+      'Preço Custo',
+      'Preço Venda',
+    ]
+    const rows = filteredPecas.map((p) => [
+      p.codigo,
+      p.nome,
+      p.descricao,
+      p.quantidade,
+      p.precoCusto,
+      p.precoVenda,
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'pecas_estoque.csv')
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Estoque de Peças</h1>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToExcel}>
+            <FileDown className="mr-2 h-4 w-4" /> Exportar Excel
+          </Button>
           <Button variant="outline" onClick={() => setIsImportOpen(true)}>
             <Upload className="mr-2 h-4 w-4" /> Importar XML
           </Button>
-          {/* Add Peca Button could go here if manual entry is needed */}
+          <Button onClick={() => setIsAddOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" /> Adicionar Manualmente
+          </Button>
         </div>
       </div>
 
@@ -129,6 +209,89 @@ export default function Pecas() {
             <Button variant="outline" onClick={() => setIsImportOpen(false)}>
               Cancelar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Peça</DialogTitle>
+            <DialogDescription>
+              Cadastro manual de peça no estoque.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="codigo" className="text-right">
+                Código
+              </Label>
+              <Input
+                id="codigo"
+                value={newCodigo}
+                onChange={(e) => setNewCodigo(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="nome" className="text-right">
+                Nome
+              </Label>
+              <Input
+                id="nome"
+                value={newNome}
+                onChange={(e) => setNewNome(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="desc" className="text-right">
+                Descrição
+              </Label>
+              <Input
+                id="desc"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="qtd" className="text-right">
+                Quantidade
+              </Label>
+              <Input
+                id="qtd"
+                type="number"
+                value={newQtd}
+                onChange={(e) => setNewQtd(e.target.value)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="custo" className="text-right">
+                Preço Custo
+              </Label>
+              <Input
+                id="custo"
+                value={newCusto}
+                onChange={handleCurrencyInput(setNewCusto)}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="venda" className="text-right">
+                Preço Venda
+              </Label>
+              <Input
+                id="venda"
+                value={newVenda}
+                onChange={handleCurrencyInput(setNewVenda)}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAddManual}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

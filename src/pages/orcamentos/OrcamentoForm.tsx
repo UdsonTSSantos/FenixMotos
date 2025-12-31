@@ -25,14 +25,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatCNPJ } from '@/lib/utils'
 import {
-  Plus,
   Trash2,
   Printer,
-  Instagram,
-  Facebook,
-  Twitter,
-  Video,
   Calculator,
+  Search,
+  Check,
+  Wrench,
+  FileText,
 } from 'lucide-react'
 import {
   Table,
@@ -43,6 +42,20 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Separator } from '@/components/ui/separator'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 
 const itemSchema = z.object({
   id: z.string(),
@@ -51,16 +64,33 @@ const itemSchema = z.object({
   nome: z.string(),
   quantidade: z.coerce.number().min(1),
   valorUnitario: z.coerce.number().min(0),
+  desconto: z.coerce.number().min(0).max(100).default(0),
   valorTotal: z.coerce.number().min(0),
-  comissaoUnitario: z.number().default(0), // Hidden field to track commission per item
+  comissaoUnitario: z.number().default(0),
 })
+
+const warrantyOptions = [
+  'Sem garantia',
+  '03 meses',
+  '06 meses',
+  '12 meses',
+  '18 meses',
+  '24 meses',
+  'Peça fornecida pelo cliente',
+] as const
 
 const formSchema = z.object({
   clienteId: z.string().optional(),
   clienteNome: z.string().min(1, 'Nome do cliente é obrigatório'),
+  clienteTelefone: z.string().optional(),
+  motoPlaca: z.string().optional(),
+  motoModelo: z.string().optional(),
+  motoAno: z.coerce.number().optional(),
   vendedorId: z.string().min(1, 'Selecione um vendedor'),
   data: z.string(),
-  validade: z.string(),
+  garantiaPecas: z.enum(warrantyOptions),
+  garantiaServicos: z.enum(warrantyOptions),
+  formaPagamento: z.string().min(1, 'Selecione a forma de pagamento'),
   itens: z.array(itemSchema),
   observacao: z.string().optional(),
   status: z.enum(['aberto', 'aprovado', 'rejeitado']),
@@ -78,13 +108,17 @@ export default function OrcamentoForm() {
     pecas,
     servicos,
     empresa,
+    financiamentos,
+    motos,
   } = useData()
-  const [isPrinting, setIsPrinting] = useState(false)
+  const [printMode, setPrintMode] = useState<
+    'none' | 'quote' | 'service_order'
+  >('none')
+  const [openClientSearch, setOpenClientSearch] = useState(false)
 
   const isEditing = !!id
   const existing = orcamentos.find((o) => o.id === id)
 
-  // Filter users for "Vendedor" role or Admin/Manager
   const vendedores = usuarios.filter(
     (u) =>
       [
@@ -101,18 +135,22 @@ export default function OrcamentoForm() {
     defaultValues: {
       clienteId: 'new',
       clienteNome: '',
+      clienteTelefone: '',
+      motoPlaca: '',
+      motoModelo: '',
+      motoAno: undefined,
       vendedorId: '',
       data: new Date().toISOString().split('T')[0],
-      validade: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0],
+      garantiaPecas: '03 meses',
+      garantiaServicos: '03 meses',
+      formaPagamento: 'À Vista',
       itens: [],
       observacao: '',
       status: 'aberto',
     },
   })
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: 'itens',
   })
@@ -123,20 +161,33 @@ export default function OrcamentoForm() {
         ...existing,
         clienteId: existing.clienteId || 'new',
         clienteNome: existing.clienteNome || '',
+        garantiaPecas: existing.garantiaPecas || '03 meses',
+        garantiaServicos: existing.garantiaServicos || '03 meses',
+        formaPagamento: existing.formaPagamento || 'À Vista',
       })
     }
   }, [isEditing, existing, form])
 
-  const handleClienteChange = (val: string) => {
-    form.setValue('clienteId', val)
-    if (val !== 'new') {
-      const cliente = clientes.find((c) => c.id === val)
-      if (cliente) {
-        form.setValue('clienteNome', cliente.nome)
+  const handleClienteSelect = (clienteId: string) => {
+    const cliente = clientes.find((c) => c.id === clienteId)
+    if (cliente) {
+      form.setValue('clienteId', cliente.id)
+      form.setValue('clienteNome', cliente.nome)
+      form.setValue('clienteTelefone', cliente.telefone)
+
+      // Auto-populate moto details from latest active financing or history
+      // Logic: Find financing for this client, get moto.
+      const financ = financiamentos.find((f) => f.clienteId === cliente.id)
+      if (financ) {
+        const moto = motos.find((m) => m.id === financ.motoId)
+        if (moto) {
+          form.setValue('motoModelo', moto.modelo)
+          form.setValue('motoPlaca', moto.placa || '')
+          form.setValue('motoAno', moto.ano)
+        }
       }
-    } else {
-      form.setValue('clienteNome', '')
     }
+    setOpenClientSearch(false)
   }
 
   const addItem = (type: 'peca' | 'servico', id: string) => {
@@ -150,8 +201,9 @@ export default function OrcamentoForm() {
           nome: p.nome,
           quantidade: 1,
           valorUnitario: p.precoVenda,
+          desconto: 0,
           valorTotal: p.precoVenda,
-          comissaoUnitario: 0, // Commission for parts is calculated on total later (3%)
+          comissaoUnitario: 0,
         })
       }
     } else {
@@ -164,30 +216,41 @@ export default function OrcamentoForm() {
           nome: s.nome,
           quantidade: 1,
           valorUnitario: s.valor,
+          desconto: 0,
           valorTotal: s.valor,
-          comissaoUnitario: s.comissao, // Fixed commission from service definition
+          comissaoUnitario: s.comissao, // Percentage
         })
       }
     }
   }
 
-  // Calculate totals for display
+  // Calculate totals
   const watchedItens = form.watch('itens')
+
+  // Recalculate item totals when qty/discount/unit changes
+  // This is handled by onChange in inputs usually, but we can double check here or trust the form state updates
+  // Since we use useFieldArray, we rely on the form state being correct.
+  // However, we need derived totals for the summary.
+
   const totalPecas = watchedItens
     .filter((i) => i.tipo === 'peca')
     .reduce((acc, i) => acc + i.valorTotal, 0)
+
   const totalServicos = watchedItens
     .filter((i) => i.tipo === 'servico')
     .reduce((acc, i) => acc + i.valorTotal, 0)
+
   const totalGeral = totalPecas + totalServicos
 
   // Commission Logic
-  // Parts: 3% of total parts value
+  // Parts: 3% of total discounted parts value
   const comissaoPecas = totalPecas * 0.03
-  // Services: Sum of (comissaoUnitario * quantidade)
+
+  // Services: Sum of (TotalValue * (Commission% / 100))
   const comissaoServicos = watchedItens
     .filter((i) => i.tipo === 'servico')
-    .reduce((acc, i) => acc + i.comissaoUnitario * i.quantidade, 0)
+    .reduce((acc, i) => acc + i.valorTotal * (i.comissaoUnitario / 100), 0)
+
   const totalComissao = comissaoPecas + comissaoServicos
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -207,43 +270,44 @@ export default function OrcamentoForm() {
     navigate('/orcamentos')
   }
 
-  const handlePrint = () => {
-    setIsPrinting(true)
+  const handlePrint = (mode: 'quote' | 'service_order') => {
+    setPrintMode(mode)
     setTimeout(() => {
       window.print()
-      setIsPrinting(false)
+      setPrintMode('none')
     }, 100)
   }
 
-  if (isPrinting) {
-    // Print View
-    const cliente = clientes.find((c) => c.id === form.getValues('clienteId'))
+  if (printMode !== 'none') {
+    const isQuote = printMode === 'quote'
     const vendedor = usuarios.find((u) => u.id === form.getValues('vendedorId'))
     const phones = [empresa.telefone, empresa.telefone2, empresa.telefone3]
       .filter(Boolean)
       .join(' | ')
 
     return (
-      <div className="bg-white text-black p-8 min-h-screen">
+      <div className="bg-white text-black p-8 min-h-screen font-sans">
+        {/* Header */}
         <div className="border-b-2 border-black pb-4 flex justify-between items-start mb-6">
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
             {empresa.logo && (
               <img
                 src={empresa.logo}
                 alt="Logo"
-                className="h-16 w-auto object-contain"
+                className="h-20 w-auto object-contain"
               />
             )}
             <div>
               <h1 className="text-2xl font-bold uppercase">{empresa.nome}</h1>
               <p className="text-sm">{empresa.endereco}</p>
-              <p className="text-sm">CNPJ: {formatCNPJ(empresa.cnpj)}</p>
-              <p className="text-sm font-medium mt-1">{phones}</p>
+              <p className="text-sm font-bold mt-1">{phones}</p>
             </div>
           </div>
           <div className="text-right">
-            <h2 className="text-xl font-bold">ORÇAMENTO</h2>
-            <p className="text-sm">
+            <h2 className="text-xl font-bold">
+              {isQuote ? 'ORÇAMENTO' : 'ORDEM DE SERVIÇO'}
+            </h2>
+            <p className="text-sm font-medium">
               Nº: {existing ? existing.id.toUpperCase() : 'NOVO'}
             </p>
             <p className="text-sm">
@@ -252,101 +316,136 @@ export default function OrcamentoForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 mb-6">
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
           <div>
-            <h3 className="font-bold border-b border-black mb-2">CLIENTE</h3>
-            <p>
-              <strong>Nome:</strong> {form.getValues('clienteNome')}
-            </p>
-            {cliente && (
-              <>
-                <p>
-                  <strong>CPF:</strong> {cliente.cpf}
-                </p>
-                <p>
-                  <strong>Telefone:</strong> {cliente.telefone}
-                </p>
-              </>
-            )}
-          </div>
-          <div>
-            <h3 className="font-bold border-b border-black mb-2">VENDEDOR</h3>
-            <p>
-              <strong>Nome:</strong> {vendedor?.nome}
-            </p>
-            <p>
-              <strong>Email:</strong> {vendedor?.email}
-            </p>
-          </div>
-        </div>
-
-        <Table className="border border-black mb-6">
-          <TableHeader>
-            <TableRow className="border-b border-black">
-              <TableHead className="text-black font-bold">Item</TableHead>
-              <TableHead className="text-black font-bold w-20 text-center">
-                Qtd
-              </TableHead>
-              <TableHead className="text-black font-bold w-32 text-right">
-                Unitário
-              </TableHead>
-              <TableHead className="text-black font-bold w-32 text-right">
-                Total
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {watchedItens.map((item, idx) => (
-              <TableRow key={idx} className="border-b border-gray-300">
-                <TableCell>{item.nome}</TableCell>
-                <TableCell className="text-center">{item.quantidade}</TableCell>
-                <TableCell className="text-right">
-                  {formatCurrency(item.valorUnitario)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatCurrency(item.valorTotal)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        <div className="flex justify-end mb-8">
-          <div className="w-1/2 space-y-2">
-            <div className="flex justify-between border-b border-gray-300">
-              <span>Total Peças:</span>
-              <span>{formatCurrency(totalPecas)}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-300">
-              <span>Total Serviços:</span>
-              <span>{formatCurrency(totalServicos)}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold">
-              <span>TOTAL GERAL:</span>
-              <span>{formatCurrency(totalGeral)}</span>
-            </div>
-          </div>
-        </div>
-
-        {form.getValues('observacao') && (
-          <div className="mb-8">
-            <h3 className="font-bold border-b border-black mb-2">
-              OBSERVAÇÕES
+            <h3 className="font-bold border-b border-black mb-2 uppercase">
+              Cliente
             </h3>
-            <p className="whitespace-pre-wrap">
-              {form.getValues('observacao')}
+            <p>
+              <span className="font-semibold">Nome:</span>{' '}
+              {form.getValues('clienteNome')}
             </p>
+            <p>
+              <span className="font-semibold">Telefone:</span>{' '}
+              {form.getValues('clienteTelefone')}
+            </p>
+          </div>
+          <div>
+            <h3 className="font-bold border-b border-black mb-2 uppercase">
+              Veículo / Vendedor
+            </h3>
+            <p>
+              <span className="font-semibold">Modelo:</span>{' '}
+              {form.getValues('motoModelo')}
+            </p>
+            <p>
+              <span className="font-semibold">Placa:</span>{' '}
+              {form.getValues('motoPlaca')}{' '}
+              {form.getValues('motoAno') && `- ${form.getValues('motoAno')}`}
+            </p>
+            <p className="mt-2">
+              <span className="font-semibold">Vendedor:</span> {vendedor?.nome}
+            </p>
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <table className="w-full mb-6 text-sm border-collapse">
+          <thead>
+            <tr className="border-b-2 border-black">
+              <th className="text-left py-2">Descrição</th>
+              <th className="text-center py-2 w-16">Qtd</th>
+              {isQuote && (
+                <>
+                  <th className="text-right py-2 w-24">Valor Unit.</th>
+                  <th className="text-right py-2 w-20">Desc(%)</th>
+                  <th className="text-right py-2 w-24">Total</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {watchedItens.map((item, idx) => (
+              <tr key={idx} className="border-b border-gray-300">
+                <td className="py-2">{item.nome}</td>
+                <td className="text-center py-2">{item.quantidade}</td>
+                {isQuote && (
+                  <>
+                    <td className="text-right py-2">
+                      {formatCurrency(item.valorUnitario)}
+                    </td>
+                    <td className="text-right py-2">{item.desconto}%</td>
+                    <td className="text-right py-2 font-medium">
+                      {formatCurrency(item.valorTotal)}
+                    </td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Totals & Conditions (Quote Only) */}
+        {isQuote && (
+          <div className="flex justify-end mb-8">
+            <div className="w-1/2 space-y-2 text-sm">
+              <div className="flex justify-between border-b border-gray-300 pb-1">
+                <span>Total Peças:</span>
+                <span>{formatCurrency(totalPecas)}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-300 pb-1">
+                <span>Total Serviços:</span>
+                <span>{formatCurrency(totalServicos)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-bold mt-2">
+                <span>TOTAL GERAL:</span>
+                <span>{formatCurrency(totalGeral)}</span>
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="mt-auto text-center text-xs text-gray-500 pt-4 border-t border-black">
-          <p>
-            Validade do orçamento:{' '}
-            {new Date(form.getValues('validade')).toLocaleDateString()}
-          </p>
-          <div className="flex justify-center gap-4 mt-2">
-            {empresa.website && <span>{empresa.website}</span>}
-            <span>{empresa.email}</span>
+        {/* Terms & Warranty */}
+        <div className="grid grid-cols-2 gap-8 text-sm mb-8">
+          {isQuote && (
+            <div>
+              <h3 className="font-bold border-b border-black mb-2">
+                CONDIÇÕES
+              </h3>
+              <p>
+                <strong>Forma de Pagamento:</strong>{' '}
+                {form.getValues('formaPagamento')}
+              </p>
+              <p>
+                <strong>Garantia Peças:</strong>{' '}
+                {form.getValues('garantiaPecas')}
+              </p>
+              <p>
+                <strong>Garantia Serviços:</strong>{' '}
+                {form.getValues('garantiaServicos')}
+              </p>
+            </div>
+          )}
+          {form.getValues('observacao') && (
+            <div className={isQuote ? '' : 'col-span-2'}>
+              <h3 className="font-bold border-b border-black mb-2">
+                OBSERVAÇÕES
+              </h3>
+              <p className="whitespace-pre-wrap">
+                {form.getValues('observacao')}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Signatures */}
+        <div className="mt-auto pt-16 grid grid-cols-2 gap-16 text-center text-sm">
+          <div className="border-t border-black pt-2">
+            <p className="font-bold">{empresa.nome}</p>
+          </div>
+          <div className="border-t border-black pt-2">
+            <p className="font-bold">Cliente</p>
           </div>
         </div>
       </div>
@@ -361,51 +460,93 @@ export default function OrcamentoForm() {
             {isEditing ? 'Editar Orçamento' : 'Novo Orçamento'}
           </CardTitle>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" /> Imprimir
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handlePrint('quote')}
+            >
+              <Printer className="mr-2 h-4 w-4" /> Orçamento (A4)
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handlePrint('service_order')}
+            >
+              <Wrench className="mr-2 h-4 w-4" /> Ordem de Serviço
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="clienteId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cliente Cadastrado</FormLabel>
-                      <Select
-                        onValueChange={handleClienteChange}
-                        value={field.value}
+              {/* Header Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex flex-col space-y-2">
+                  <FormLabel>Cliente (Busca Inteligente)</FormLabel>
+                  <Popover
+                    open={openClientSearch}
+                    onOpenChange={setOpenClientSearch}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={openClientSearch}
+                        className="justify-between w-full"
                       >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione ou Novo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="new">
-                            -- Cliente não cadastrado / Avulso --
-                          </SelectItem>
-                          {clientes.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        {form.watch('clienteNome') || 'Selecione um cliente...'}
+                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Buscar cliente..." />
+                        <CommandList>
+                          <CommandEmpty>
+                            Nenhum cliente encontrado.
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {clientes
+                              .sort((a, b) => a.nome.localeCompare(b.nome))
+                              .map((cliente) => (
+                                <CommandItem
+                                  key={cliente.id}
+                                  value={cliente.nome}
+                                  onSelect={() =>
+                                    handleClienteSelect(cliente.id)
+                                  }
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      form.watch('clienteId') === cliente.id
+                                        ? 'opacity-100'
+                                        : 'opacity-0',
+                                    )}
+                                  />
+                                  {cliente.nome}
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Input
+                    placeholder="Nome do Cliente (Manual)"
+                    {...form.register('clienteNome')}
+                    className={
+                      form.watch('clienteId') !== 'new' ? 'hidden' : ''
+                    }
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
-                  name="clienteNome"
+                  name="clienteTelefone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nome do Cliente</FormLabel>
+                      <FormLabel>Celular / Telefone</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -413,6 +554,7 @@ export default function OrcamentoForm() {
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="vendedorId"
@@ -425,7 +567,7 @@ export default function OrcamentoForm() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione o vendedor" />
+                            <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -440,38 +582,144 @@ export default function OrcamentoForm() {
                     </FormItem>
                   )}
                 />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="data"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Data Emissão</FormLabel>
+
+                <FormField
+                  control={form.control}
+                  name="motoModelo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Modelo da Moto</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex: Honda CG 160" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="motoPlaca"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Placa</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="uppercase" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="motoAno"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ano</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="formaPagamento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma de Pagamento</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="validade"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Validade</FormLabel>
+                        <SelectContent>
+                          <SelectItem value="À Vista">À Vista</SelectItem>
+                          <SelectItem value="Cartão de Crédito">
+                            Cartão de Crédito
+                          </SelectItem>
+                          <SelectItem value="Cartão de Débito">
+                            Cartão de Débito
+                          </SelectItem>
+                          <SelectItem value="Pix">Pix</SelectItem>
+                          <SelectItem value="Boleto">Boleto</SelectItem>
+                          <SelectItem value="Financiamento">
+                            Financiamento
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="garantiaPecas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Garantia Peças</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                        <SelectContent>
+                          {warrantyOptions.map((opt) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="garantiaServicos"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Garantia Serviços</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {warrantyOptions.map((opt) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <Separator />
 
+              {/* Items Section */}
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-semibold text-lg">Itens do Orçamento</h3>
@@ -483,7 +731,7 @@ export default function OrcamentoForm() {
                       <SelectContent>
                         {pecas.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.nome} - {formatCurrency(p.precoVenda)}
+                            {p.nome}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -495,7 +743,7 @@ export default function OrcamentoForm() {
                       <SelectContent>
                         {servicos.map((s) => (
                           <SelectItem key={s.id} value={s.id}>
-                            {s.nome} - {formatCurrency(s.valor)}
+                            {s.nome}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -509,9 +757,10 @@ export default function OrcamentoForm() {
                       <TableRow>
                         <TableHead>Tipo</TableHead>
                         <TableHead>Item</TableHead>
-                        <TableHead className="w-[100px]">Qtd</TableHead>
-                        <TableHead className="w-[150px]">Unitário</TableHead>
-                        <TableHead className="w-[150px]">Total</TableHead>
+                        <TableHead className="w-[80px]">Qtd</TableHead>
+                        <TableHead className="w-[120px]">Unitário</TableHead>
+                        <TableHead className="w-[100px]">Desc(%)</TableHead>
+                        <TableHead className="w-[120px]">Total</TableHead>
                         <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -539,13 +788,19 @@ export default function OrcamentoForm() {
                                   {...field}
                                   onChange={(e) => {
                                     field.onChange(e)
+                                    // Trigger Recalc
                                     const qty = Number(e.target.value)
                                     const unit = form.getValues(
                                       `itens.${index}.valorUnitario`,
                                     )
+                                    const desc = form.getValues(
+                                      `itens.${index}.desconto`,
+                                    )
+                                    const total =
+                                      qty * unit * (1 - (desc || 0) / 100)
                                     form.setValue(
                                       `itens.${index}.valorTotal`,
-                                      qty * unit,
+                                      total,
                                     )
                                   }}
                                 />
@@ -566,9 +821,44 @@ export default function OrcamentoForm() {
                                     const qty = form.getValues(
                                       `itens.${index}.quantidade`,
                                     )
+                                    const desc = form.getValues(
+                                      `itens.${index}.desconto`,
+                                    )
+                                    const total =
+                                      qty * unit * (1 - (desc || 0) / 100)
                                     form.setValue(
                                       `itens.${index}.valorTotal`,
-                                      qty * unit,
+                                      total,
+                                    )
+                                  }}
+                                />
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`itens.${index}.desconto`}
+                              render={({ field }) => (
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  {...field}
+                                  onChange={(e) => {
+                                    field.onChange(e)
+                                    const desc = Number(e.target.value)
+                                    const unit = form.getValues(
+                                      `itens.${index}.valorUnitario`,
+                                    )
+                                    const qty = form.getValues(
+                                      `itens.${index}.quantidade`,
+                                    )
+                                    const total =
+                                      qty * unit * (1 - (desc || 0) / 100)
+                                    form.setValue(
+                                      `itens.${index}.valorTotal`,
+                                      total,
                                     )
                                   }}
                                 />
@@ -598,7 +888,7 @@ export default function OrcamentoForm() {
                       {fields.length === 0 && (
                         <TableRow>
                           <TableCell
-                            colSpan={6}
+                            colSpan={7}
                             className="text-center h-24 text-muted-foreground"
                           >
                             Adicione itens ao orçamento.
@@ -653,38 +943,49 @@ export default function OrcamentoForm() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="aberto">Aberto</SelectItem>
-                        <SelectItem value="aprovado">Aprovado</SelectItem>
-                        <SelectItem value="rejeitado">Rejeitado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="flex justify-between items-center">
+                <div className="flex gap-4 items-center">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem className="w-[200px] mb-0">
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="aberto">Aberto</SelectItem>
+                            <SelectItem value="aprovado">Aprovado</SelectItem>
+                            <SelectItem value="rejeitado">Rejeitado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+                  {existing && (
+                    <div className="text-sm font-bold text-muted-foreground pt-6">
+                      Nº Orçamento: {existing.id.toUpperCase()}
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex justify-end gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/orcamentos')}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Salvar Orçamento</Button>
+                <div className="flex gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/orcamentos')}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit">Salvar Orçamento</Button>
+                </div>
               </div>
             </form>
           </Form>

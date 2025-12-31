@@ -114,7 +114,7 @@ export interface Usuario {
   id: string
   nome: string
   email: string
-  senha?: string // In a real app this would be hashed or handled by auth provider
+  senha?: string
   role: UserRole
   ativo: boolean
 }
@@ -135,7 +135,7 @@ export interface Servico {
   nome: string
   descricao: string
   valor: number
-  comissao: number // Fixed value or percentage? User story says "Commission value", implies fixed or %? "3% of parts" is specific to parts. Let's assume fixed value for services for now, or allow % logic.
+  comissao: number // Percentage value (e.g. 10 for 10%)
 }
 
 export type OrcamentoStatus = 'aberto' | 'aprovado' | 'rejeitado'
@@ -147,16 +147,33 @@ export interface OrcamentoItem {
   nome: string
   quantidade: number
   valorUnitario: number
+  desconto: number // Percentage 0-100
   valorTotal: number
+  comissaoUnitario: number // Store % for services
 }
+
+export type WarrantyOption =
+  | 'Sem garantia'
+  | '03 meses'
+  | '06 meses'
+  | '12 meses'
+  | '18 meses'
+  | '24 meses'
+  | 'Peça fornecida pelo cliente'
 
 export interface Orcamento {
   id: string
-  clienteId: string // Optional if prospect? Let's assume registered cliente for now or generic string
-  clienteNome?: string // For quick display or unregistered
+  clienteId: string
+  clienteNome: string
+  clienteTelefone?: string
+  motoPlaca?: string
+  motoModelo?: string
+  motoAno?: number
   vendedorId: string
   data: string // ISO Date
-  validade: string // ISO Date
+  garantiaPecas: WarrantyOption
+  garantiaServicos: WarrantyOption
+  formaPagamento: string
   itens: OrcamentoItem[]
   valorTotalPecas: number
   valorTotalServicos: number
