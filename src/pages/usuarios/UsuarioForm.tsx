@@ -26,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { USER_ROLES } from '@/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Upload } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
@@ -73,7 +73,7 @@ export default function UsuarioForm() {
       form.reset({
         nome: existing.nome,
         email: existing.email,
-        role: existing.role,
+        role: existing.role as any,
         ativo: existing.ativo,
         senha: '',
         foto: existing.foto || '',
@@ -101,19 +101,30 @@ export default function UsuarioForm() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Validation: Check if it is an image
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Arquivo inválido',
+          description:
+            'Por favor, selecione um arquivo de imagem (jpg, png, webp).',
+          variant: 'destructive',
+        })
+        return
+      }
+
       setUploading(true)
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
+      const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`
       const filePath = `${fileName}`
 
       const { data, error } = await supabase.storage
-        .from('avatars')
+        .from('images')
         .upload(filePath, file)
 
       setUploading(false)
       if (error) {
         toast({
-          title: 'Erro',
+          title: 'Erro no upload',
           description: error.message,
           variant: 'destructive',
         })
@@ -123,8 +134,12 @@ export default function UsuarioForm() {
       if (data) {
         const {
           data: { publicUrl },
-        } = supabase.storage.from('avatars').getPublicUrl(filePath)
+        } = supabase.storage.from('images').getPublicUrl(filePath)
         form.setValue('foto', publicUrl)
+        toast({
+          title: 'Foto carregada',
+          description: 'A imagem foi enviada com sucesso.',
+        })
       }
     }
   }
@@ -138,8 +153,8 @@ export default function UsuarioForm() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="flex items-center gap-6 justify-center pb-4">
-                <Avatar className="h-24 w-24">
+              <div className="flex flex-col items-center gap-4 justify-center pb-4">
+                <Avatar className="h-24 w-24 border-2 border-border">
                   <AvatarImage src={form.watch('foto')} />
                   <AvatarFallback className="text-lg">
                     {form.watch('nome')
@@ -147,25 +162,36 @@ export default function UsuarioForm() {
                       : '??'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="relative overflow-hidden cursor-pointer"
+                    disabled={uploading}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {uploading ? 'Enviando...' : 'Carregar Foto'}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="absolute inset-0 opacity-0 cursor-pointer h-full w-full"
+                      onChange={handleFileChange}
+                      disabled={uploading}
+                    />
+                  </Button>
+                  {form.watch('foto') && (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="relative overflow-hidden"
-                      disabled={uploading}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => form.setValue('foto', '')}
                     >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {uploading ? 'Enviando...' : 'Carregar Foto'}
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={handleFileChange}
-                      />
+                      <X className="mr-2 h-4 w-4" />
+                      Remover
                     </Button>
-                  </div>
+                  )}
                 </div>
               </div>
 
