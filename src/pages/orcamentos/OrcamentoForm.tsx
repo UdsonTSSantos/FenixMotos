@@ -32,6 +32,7 @@ import {
   Check,
   Wrench,
   MessageCircle,
+  Mail,
 } from 'lucide-react'
 import {
   Table,
@@ -279,14 +280,7 @@ export default function OrcamentoForm() {
     }, 100)
   }
 
-  const handleWhatsApp = (mode: 'quote' | 'service_order') => {
-    const phone = form.getValues('clienteTelefone')?.replace(/\D/g, '')
-    if (!phone) {
-      alert('Telefone do cliente não preenchido')
-      return
-    }
-
-    const isQuote = mode === 'quote'
+  const getMessageBody = (isQuote: boolean) => {
     const cliente = form.getValues('clienteNome')
     const veiculo = `${form.getValues('motoModelo')} (${form.getValues('motoPlaca')})`
     const itemsText = watchedItens
@@ -318,9 +312,27 @@ export default function OrcamentoForm() {
         message += `*OBS:* ${form.getValues('observacao')}\n`
       }
     }
+    return message
+  }
 
-    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
-    window.open(url, '_blank')
+  const handleWhatsApp = (mode: 'quote' | 'service_order') => {
+    const phone = form.getValues('clienteTelefone')?.replace(/\D/g, '')
+    if (!phone) {
+      alert('Telefone do cliente não preenchido')
+      return
+    }
+    const message = getMessageBody(mode === 'quote')
+    const url = `https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleEmail = () => {
+    const cliente = form.getValues('clienteNome')
+    const message = getMessageBody(true)
+    const subject = `Orçamento - ${empresa.nome}`
+    const body = message.replace(/\*/g, '').replace(/\n/g, '%0D%0A') // Basic formatting for mailto
+
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`
   }
 
   if (printMode !== 'none') {
@@ -516,6 +528,15 @@ export default function OrcamentoForm() {
             )}
           </CardTitle>
           <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="Enviar por Email"
+              onClick={handleEmail}
+            >
+              <Mail className="h-4 w-4" />
+            </Button>
             <Button
               type="button"
               variant="outline"

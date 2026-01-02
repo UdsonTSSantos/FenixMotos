@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { USER_ROLES } from '@/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Upload } from 'lucide-react'
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome muito curto'),
@@ -94,11 +95,15 @@ export default function UsuarioForm() {
     navigate('/usuarios')
   }
 
-  const handleRandomPhoto = () => {
-    const gender = Math.random() > 0.5 ? 'male' : 'female'
-    const seed = Math.floor(Math.random() * 1000)
-    const url = `https://img.usecurling.com/ppl/medium?gender=${gender}&seed=${seed}`
-    form.setValue('foto', url)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        form.setValue('foto', reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   return (
@@ -120,36 +125,39 @@ export default function UsuarioForm() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRandomPhoto}
-                  >
-                    Gerar Foto Aleatória
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="relative overflow-hidden"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Carregar Foto
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={handleFileChange}
+                      />
+                    </Button>
+                    {form.watch('foto') && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => form.setValue('foto', '')}
+                      >
+                        Remover
+                      </Button>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground text-center">
-                    Ou cole uma URL abaixo
+                    Formatos: JPG, PNG
                   </p>
                 </div>
               </div>
-
-              <FormField
-                control={form.control}
-                name="foto"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL da Foto</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="https://exemplo.com/foto.jpg"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <FormField
                 control={form.control}

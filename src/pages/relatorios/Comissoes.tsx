@@ -18,14 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency } from '@/lib/utils'
-import { FileText, Printer } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 
 export default function Comissoes() {
   const { orcamentos, usuarios, empresa } = useData()
 
   const [selectedUser, setSelectedUser] = useState<string>('all')
+  const [segment, setSegment] = useState<'all' | 'pecas' | 'servicos'>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [printMode, setPrintMode] = useState(false)
@@ -51,15 +53,35 @@ export default function Comissoes() {
     return matchesUser && matchesDate
   })
 
-  // Group by seller if 'all' is selected, or just list
+  // Helper to calculate commission for a specific item row based on segment
+  const calculateCommission = (
+    item: (typeof filteredData)[0],
+    seg: typeof segment,
+  ) => {
+    if (seg === 'pecas') {
+      // 3% on parts
+      return item.valorTotalPecas * 0.03
+    }
+    if (seg === 'servicos') {
+      // Total Commission - Parts Commission (or calculated from items if saved properly, but simpler to derive)
+      // Since comissaoVendedor = (totalPecas * 0.03) + (services comission)
+      // Services Comission = comissaoVendedor - (totalPecas * 0.03)
+      return item.comissaoVendedor - item.valorTotalPecas * 0.03
+    }
+    return item.comissaoVendedor
+  }
+
+  // Calculate totals
   const totalCommission = filteredData.reduce(
-    (acc, curr) => acc + curr.comissaoVendedor,
+    (acc, curr) => acc + calculateCommission(curr, segment),
     0,
   )
-  const totalSales = filteredData.reduce(
-    (acc, curr) => acc + curr.valorTotal,
-    0,
-  )
+
+  const totalSales = filteredData.reduce((acc, curr) => {
+    if (segment === 'pecas') return acc + curr.valorTotalPecas
+    if (segment === 'servicos') return acc + curr.valorTotalServicos
+    return acc + curr.valorTotal
+  }, 0)
 
   const handlePrint = () => {
     setPrintMode(true)
@@ -73,6 +95,13 @@ export default function Comissoes() {
     selectedUser === 'all'
       ? 'Todos os Vendedores'
       : usuarios.find((u) => u.id === selectedUser)?.nome || 'Vendedor'
+
+  const segmentTitle =
+    segment === 'pecas'
+      ? 'Somente Peças'
+      : segment === 'servicos'
+        ? 'Somente Serviços'
+        : 'Geral (Peças + Serviços)'
 
   if (printMode) {
     return (
@@ -91,6 +120,7 @@ export default function Comissoes() {
           </div>
           <div className="ml-auto text-right text-sm">
             <p>Emissão: {new Date().toLocaleDateString()}</p>
+            <p>Tipo: {segmentTitle}</p>
             <p>
               Período:{' '}
               {startDate ? new Date(startDate).toLocaleDateString() : 'Início'}
@@ -114,7 +144,7 @@ export default function Comissoes() {
                 <th className="border border-black p-2 text-left">Vendedor</th>
               )}
               <th className="border border-black p-2 text-right">
-                Total Venda
+                Total Venda ({segment === 'all' ? 'Geral' : segment})
               </th>
               <th className="border border-black p-2 text-right">Comissão</th>
             </tr>
@@ -135,10 +165,16 @@ export default function Comissoes() {
                   </td>
                 )}
                 <td className="border border-black p-2 text-right">
-                  {formatCurrency(item.valorTotal)}
+                  {formatCurrency(
+                    segment === 'pecas'
+                      ? item.valorTotalPecas
+                      : segment === 'servicos'
+                        ? item.valorTotalServicos
+                        : item.valorTotal,
+                  )}
                 </td>
                 <td className="border border-black p-2 text-right">
-                  {formatCurrency(item.comissaoVendedor)}
+                  {formatCurrency(calculateCommission(item, segment))}
                 </td>
               </tr>
             ))}
@@ -183,7 +219,7 @@ export default function Comissoes() {
         <CardHeader>
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div className="space-y-2">
               <label className="text-sm font-medium">Vendedor</label>
@@ -222,6 +258,21 @@ export default function Comissoes() {
               />
             </div>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Segmento de Comissão</label>
+            <Tabs
+              value={segment}
+              onValueChange={(v) => setSegment(v as any)}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-3 max-w-md">
+                <TabsTrigger value="all">Geral</TabsTrigger>
+                <TabsTrigger value="pecas">Somente Peças</TabsTrigger>
+                <TabsTrigger value="servicos">Somente Serviços</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardContent>
       </Card>
 
@@ -229,7 +280,7 @@ export default function Comissoes() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Total de Vendas (Aprovadas)
+              Total de Vendas ({segment === 'all' ? 'Geral' : segment})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -252,7 +303,11 @@ export default function Comissoes() {
               {formatCurrency(totalCommission)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Baseado em 3% Peças + Serviços
+              {segment === 'pecas'
+                ? '3% sobre peças'
+                : segment === 'servicos'
+                  ? 'Conforme cadastro de serviços'
+                  : 'Soma de Peças + Serviços'}
             </p>
           </CardContent>
         </Card>
@@ -265,9 +320,11 @@ export default function Comissoes() {
               <TableHead>Data</TableHead>
               <TableHead>Vendedor</TableHead>
               <TableHead>Cliente</TableHead>
-              <TableHead>Total Peças</TableHead>
-              <TableHead>Total Serviços</TableHead>
-              <TableHead>Total Geral</TableHead>
+              {segment === 'all' && <TableHead>Total Peças</TableHead>}
+              {segment === 'all' && <TableHead>Total Serviços</TableHead>}
+              <TableHead>
+                Total {segment === 'all' ? 'Geral' : 'Venda'}
+              </TableHead>
               <TableHead className="text-right">Comissão</TableHead>
             </TableRow>
           </TableHeader>
@@ -282,15 +339,27 @@ export default function Comissoes() {
                   </TableCell>
                   <TableCell>{vendedor}</TableCell>
                   <TableCell>{item.clienteNome}</TableCell>
-                  <TableCell>{formatCurrency(item.valorTotalPecas)}</TableCell>
-                  <TableCell>
-                    {formatCurrency(item.valorTotalServicos)}
-                  </TableCell>
+                  {segment === 'all' && (
+                    <TableCell>
+                      {formatCurrency(item.valorTotalPecas)}
+                    </TableCell>
+                  )}
+                  {segment === 'all' && (
+                    <TableCell>
+                      {formatCurrency(item.valorTotalServicos)}
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">
-                    {formatCurrency(item.valorTotal)}
+                    {formatCurrency(
+                      segment === 'pecas'
+                        ? item.valorTotalPecas
+                        : segment === 'servicos'
+                          ? item.valorTotalServicos
+                          : item.valorTotal,
+                    )}
                   </TableCell>
                   <TableCell className="text-right font-bold text-emerald-600">
-                    {formatCurrency(item.comissaoVendedor)}
+                    {formatCurrency(calculateCommission(item, segment))}
                   </TableCell>
                 </TableRow>
               )
@@ -298,11 +367,10 @@ export default function Comissoes() {
             {filteredData.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={segment === 'all' ? 7 : 5}
                   className="text-center h-24 text-muted-foreground"
                 >
-                  Nenhum registro encontrado para o período/vendedor
-                  selecionado.
+                  Nenhum registro encontrado para o filtro selecionado.
                 </TableCell>
               </TableRow>
             )}

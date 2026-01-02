@@ -16,6 +16,7 @@ import {
   Peca,
   Servico,
   Orcamento,
+  OrcamentoItem,
 } from '@/types'
 import {
   differenceInDays,
@@ -586,13 +587,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Sucesso', description: 'Serviço removido.' })
   }
 
+  // Helper to adjust stock
+  const adjustStock = (
+    items: OrcamentoItem[],
+    direction: 'deduct' | 'restore',
+  ) => {
+    setPecas((currentPecas) => {
+      const updates = new Map(currentPecas.map((p) => [p.id, p]))
+
+      items.forEach((item) => {
+        if (item.tipo === 'peca') {
+          const peca = updates.get(item.referenciaId)
+          if (peca) {
+            const quantityChange =
+              direction === 'deduct' ? -item.quantidade : item.quantidade
+            updates.set(peca.id, {
+              ...peca,
+              quantidade: peca.quantidade + quantityChange,
+            })
+          }
+        }
+      })
+
+      return Array.from(updates.values())
+    })
+  }
+
   // CRUD Orcamentos
   const addOrcamento = (data: Omit<Orcamento, 'id'>) => {
-    // Generate sequential ID
     const ids = orcamentos.map((o) => parseInt(o.id)).filter((n) => !isNaN(n))
     const nextId = ids.length > 0 ? Math.max(...ids) + 1 : 1
+    const newOrcamento: Orcamento = { ...data, id: nextId.toString() }
 
-    setOrcamentos([...orcamentos, { ...data, id: nextId.toString() }])
+    // If added as Approved, deduct stock
+    if (newOrcamento.status === 'aprovado') {
+      adjustStock(newOrcamento.itens, 'deduct')
+    }
+
+    setOrcamentos([...orcamentos, newOrcamento])
     toast({ title: 'Sucesso', description: `Orçamento #${nextId} criado.` })
   }
 
@@ -604,50 +636,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const newStatus = data.status || oldOrcamento.status
     const oldStatus = oldOrcamento.status
 
-    if (newStatus !== oldStatus) {
-      if (newStatus === 'aprovado') {
-        // Status changed TO 'aprovado': Deduct items from stock
-        const itemsToDeduct = data.itens || oldOrcamento.itens
-        setPecas((currentPecas) => {
-          return currentPecas.map((peca) => {
-            const item = itemsToDeduct.find(
-              (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
-            )
-            if (item) {
-              return {
-                ...peca,
-                quantidade: peca.quantidade - item.quantidade,
-              }
-            }
-            return peca
-          })
-        })
-        toast({
-          title: 'Estoque Atualizado',
-          description: 'Itens deduzidos do estoque.',
-        })
-      } else if (oldStatus === 'aprovado') {
-        // Status changed FROM 'aprovado' (to 'rejeitado', 'aberto', etc): Restore items to stock
-        const itemsToRestore = oldOrcamento.itens // Restore based on what was previously approved
-        setPecas((currentPecas) => {
-          return currentPecas.map((peca) => {
-            const item = itemsToRestore.find(
-              (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
-            )
-            if (item) {
-              return {
-                ...peca,
-                quantidade: peca.quantidade + item.quantidade,
-              }
-            }
-            return peca
-          })
-        })
-        toast({
-          title: 'Estoque Atualizado',
-          description: 'Itens retornados ao estoque.',
-        })
+    let shouldRestore = false
+    let shouldDeduct = false
+    const itemsToRestore = oldOrcamento.itens
+    const itemsToDeduct = data.itens || oldOrcamento.itens
+
+    if (oldStatus === 'aprovado') {
+      // It was approved.
+      if (newStatus !== 'aprovado') {
+        shouldRestore = true // Approved -> Open/Rejected
+      } else if (data.itens) {
+        // Approved -> Approved (but items changed)
+        shouldRestore = true
+        shouldDeduct = true
       }
+    } else {
+      // It was NOT approved.
+      if (newStatus === 'aprovado') {
+        shouldDeduct = true // Open/Rejected -> Approved
+      }
+    }
+
+    if (shouldRestore) {
+      adjustStock(itemsToRestore, 'restore')
+    }
+
+    if (shouldDeduct) {
+      adjustStock(itemsToDeduct, 'deduct')
+    }
+
+    if (shouldRestore || shouldDeduct) {
+      toast({
+        title: 'Estoque Atualizado',
+        description: 'Movimentação de estoque realizada com sucesso.',
+      })
     }
 
     setOrcamentos((prev) =>
@@ -662,21 +684,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     // Restore stock if deleting an approved quote
     if (orcamento.status === 'aprovado') {
-      const itemsToRestore = orcamento.itens
-      setPecas((currentPecas) => {
-        return currentPecas.map((peca) => {
-          const item = itemsToRestore.find(
-            (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
-          )
-          if (item) {
-            return {
-              ...peca,
-              quantidade: peca.quantidade + item.quantidade,
-            }
-          }
-          return peca
-        })
-      })
+      adjustStock(orcamento.itens, 'restore')
       toast({
         title: 'Estoque Restaurado',
         description: 'Itens do orçamento excluído retornaram ao estoque.',
