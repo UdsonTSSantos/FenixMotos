@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
       },
     )
 
+    const payload = await req.json()
     const {
       email,
       password,
@@ -32,8 +33,22 @@ Deno.serve(async (req) => {
       cep,
       uf,
       cpf,
-    } = await req.json()
+    } = payload
 
+    // Validate required fields
+    if (!email || !password || !nome || !role) {
+      return new Response(
+        JSON.stringify({
+          error: 'Campos obrigatórios: Nome, Email, Senha e Cargo.',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200, // Returning 200 to allow client to handle error message gracefully
+        },
+      )
+    }
+
+    // Create Auth User
     const { data: user, error: userError } =
       await supabaseClient.auth.admin.createUser({
         email,
@@ -42,10 +57,16 @@ Deno.serve(async (req) => {
         user_metadata: { nome, role },
       })
 
-    if (userError) throw userError
+    if (userError) {
+      return new Response(JSON.stringify({ error: userError.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      })
+    }
 
     if (user.user) {
-      // Create profile
+      // Create profile in public schema
+      // We explicitly handle optional/missing fields by defaulting to null where appropriate
       const { error: profileError } = await supabaseClient
         .from('profiles')
         .insert({
@@ -53,17 +74,31 @@ Deno.serve(async (req) => {
           nome,
           email,
           role,
-          foto,
+          foto: foto || null, // Handle missing photo
           ativo: ativo !== undefined ? ativo : true,
-          endereco,
-          bairro,
-          cidade,
-          cep,
-          uf,
-          cpf,
+          endereco: endereco || null,
+          bairro: bairro || null,
+          cidade: cidade || null,
+          cep: cep || null,
+          uf: uf || null,
+          cpf: cpf || null,
         })
 
-      if (profileError) throw profileError
+      if (profileError) {
+        // Rollback: delete the auth user if profile creation fails to ensure consistency
+        await supabaseClient.auth.admin.deleteUser(user.user.id)
+
+        return new Response(
+          JSON.stringify({
+            error:
+              'Erro ao criar perfil de colaborador: ' + profileError.message,
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        )
+      }
     }
 
     return new Response(JSON.stringify(user), {

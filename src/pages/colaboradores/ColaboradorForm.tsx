@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { USER_ROLES, ESTADOS_BR } from '@/types'
 import { Separator } from '@/components/ui/separator'
+import { Loader2 } from 'lucide-react'
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome muito curto'),
@@ -92,11 +93,12 @@ export default function ColaboradorForm() {
     }
   }, [isEditing, existing, form])
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isEditing && id) {
       const updateData: any = { ...values }
       if (!values.senha) delete updateData.senha
       updateUsuario(id, updateData)
+      navigate('/colaboradores')
     } else {
       if (!values.senha) {
         form.setError('senha', {
@@ -104,9 +106,11 @@ export default function ColaboradorForm() {
         })
         return
       }
-      addUsuario(values as any)
+      const success = await addUsuario(values as any)
+      if (success) {
+        navigate('/colaboradores')
+      }
     }
-    navigate('/colaboradores')
   }
 
   return (
@@ -335,7 +339,12 @@ export default function ColaboradorForm() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">Salvar</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Salvar
+                </Button>
               </div>
             </form>
           </Form>

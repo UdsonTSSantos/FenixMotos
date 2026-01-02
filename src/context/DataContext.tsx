@@ -54,7 +54,7 @@ interface DataContextType {
   refreshPenalties: () => void
   updateEmpresa: (data: Empresa) => void
 
-  addUsuario: (user: Omit<Usuario, 'id'>) => void
+  addUsuario: (user: Omit<Usuario, 'id'>) => Promise<boolean>
   updateUsuario: (id: string, user: Partial<Usuario>) => void
   deleteUsuario: (id: string) => void
 
@@ -359,19 +359,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Usuarios / Colaboradores
   const addUsuario = async (userData: Omit<Usuario, 'id'>) => {
-    const { data, error } = await supabase.functions.invoke('create-user', {
-      body: userData,
-    })
-    if (error || data?.error) {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: userData,
+      })
+
+      if (error) {
+        toast({
+          title: 'Erro de Comunicação',
+          description: error.message || 'Falha ao conectar com o servidor.',
+          variant: 'destructive',
+        })
+        return false
+      }
+
+      if (data?.error) {
+        toast({
+          title: 'Erro ao Cadastrar',
+          description: data.error,
+          variant: 'destructive',
+        })
+        return false
+      }
+
+      await fetchAllData()
+      toast({ title: 'Sucesso', description: 'Colaborador cadastrado.' })
+      return true
+    } catch (e: any) {
       toast({
-        title: 'Erro',
-        description: error?.message || data?.error,
+        title: 'Erro Inesperado',
+        description: e.message,
         variant: 'destructive',
       })
-      return
+      return false
     }
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Colaborador cadastrado.' })
   }
 
   const updateUsuario = async (id: string, data: Partial<Usuario>) => {
