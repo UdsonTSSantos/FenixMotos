@@ -505,9 +505,13 @@ export default function OrcamentoForm() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>
             {isEditing ? 'Editar Orçamento' : 'Novo Orçamento'}
-            {existing && (
+            {existing ? (
               <span className="ml-4 text-sm font-normal text-muted-foreground">
                 #{existing.id.toUpperCase()}
+              </span>
+            ) : (
+              <span className="ml-4 text-sm font-normal text-muted-foreground">
+                (Numeração Automática)
               </span>
             )}
           </CardTitle>
@@ -1046,9 +1050,13 @@ export default function OrcamentoForm() {
                       </FormItem>
                     )}
                   />
-                  {existing && (
+                  {existing ? (
                     <div className="text-sm font-bold text-muted-foreground pt-6">
                       Nº Orçamento: {existing.id.toUpperCase()}
+                    </div>
+                  ) : (
+                    <div className="text-sm font-bold text-muted-foreground pt-6">
+                      Nº Orçamento: (Automático)
                     </div>
                   )}
                 </div>

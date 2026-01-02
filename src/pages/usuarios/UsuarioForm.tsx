@@ -25,6 +25,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { USER_ROLES } from '@/types'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome muito curto'),
@@ -40,6 +41,7 @@ const formSchema = z.object({
     'Financeiro',
   ]),
   ativo: z.boolean().default(true),
+  foto: z.string().optional(),
 })
 
 export default function UsuarioForm() {
@@ -58,6 +60,7 @@ export default function UsuarioForm() {
       senha: '',
       role: 'Vendedor',
       ativo: true,
+      foto: '',
     },
   })
 
@@ -69,6 +72,7 @@ export default function UsuarioForm() {
         role: existing.role,
         ativo: existing.ativo,
         senha: '', // Don't show password
+        foto: existing.foto || '',
       })
     }
   }, [isEditing, existing, form])
@@ -90,6 +94,13 @@ export default function UsuarioForm() {
     navigate('/usuarios')
   }
 
+  const handleRandomPhoto = () => {
+    const gender = Math.random() > 0.5 ? 'male' : 'female'
+    const seed = Math.floor(Math.random() * 1000)
+    const url = `https://img.usecurling.com/ppl/medium?gender=${gender}&seed=${seed}`
+    form.setValue('foto', url)
+  }
+
   return (
     <div className="max-w-xl mx-auto space-y-6">
       <Card>
@@ -99,6 +110,47 @@ export default function UsuarioForm() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <div className="flex items-center gap-6 justify-center pb-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={form.watch('foto')} />
+                  <AvatarFallback className="text-lg">
+                    {form.watch('nome')
+                      ? form.watch('nome').substring(0, 2).toUpperCase()
+                      : '??'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRandomPhoto}
+                  >
+                    Gerar Foto Aleatória
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Ou cole uma URL abaixo
+                  </p>
+                </div>
+              </div>
+
+              <FormField
+                control={form.control}
+                name="foto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL da Foto</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="https://exemplo.com/foto.jpg"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="nome"

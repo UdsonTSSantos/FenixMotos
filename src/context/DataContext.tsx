@@ -180,6 +180,7 @@ const INITIAL_USUARIOS: Usuario[] = [
     senha: '26843831',
     role: 'Administrador',
     ativo: true,
+    foto: 'https://img.usecurling.com/ppl/medium?gender=male&seed=1',
   },
 ]
 
@@ -586,15 +587,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // CRUD Orcamentos
   const addOrcamento = (data: Omit<Orcamento, 'id'>) => {
-    setOrcamentos([
-      ...orcamentos,
-      { ...data, id: Math.random().toString(36).substr(2, 9) },
-    ])
-    toast({ title: 'Sucesso', description: 'Orçamento criado.' })
+    // Generate sequential ID
+    const ids = orcamentos.map((o) => parseInt(o.id)).filter((n) => !isNaN(n))
+    const nextId = ids.length > 0 ? Math.max(...ids) + 1 : 1
+
+    setOrcamentos([...orcamentos, { ...data, id: nextId.toString() }])
+    toast({ title: 'Sucesso', description: `Orçamento #${nextId} criado.` })
   }
 
   const updateOrcamento = (id: string, data: Partial<Orcamento>) => {
-    setOrcamentos(orcamentos.map((o) => (o.id === id ? { ...o, ...data } : o)))
+    // Handle inventory deduction if status changes to 'aprovado'
+    const oldOrcamento = orcamentos.find((o) => o.id === id)
+
+    if (
+      oldOrcamento &&
+      data.status === 'aprovado' &&
+      oldOrcamento.status !== 'aprovado'
+    ) {
+      const itemsToDeduct = data.itens || oldOrcamento.itens
+
+      setPecas((currentPecas) => {
+        return currentPecas.map((peca) => {
+          const item = itemsToDeduct.find(
+            (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
+          )
+          if (item) {
+            return {
+              ...peca,
+              quantidade: peca.quantidade - item.quantidade,
+            }
+          }
+          return peca
+        })
+      })
+      toast({
+        title: 'Estoque Atualizado',
+        description: 'Quantidades deduzidas do estoque.',
+      })
+    }
+
+    setOrcamentos((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, ...data } : o)),
+    )
     toast({ title: 'Sucesso', description: 'Orçamento atualizado.' })
   }
 

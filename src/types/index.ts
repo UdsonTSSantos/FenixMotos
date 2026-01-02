@@ -117,6 +117,7 @@ export interface Usuario {
   senha?: string
   role: UserRole
   ativo: boolean
+  foto?: string
 }
 
 export interface Peca {

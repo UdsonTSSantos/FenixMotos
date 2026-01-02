@@ -13,6 +13,7 @@ import {
 import { Plus, Search, Edit } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 export default function Usuarios() {
   const { usuarios } = useData()
@@ -51,6 +52,7 @@ export default function Usuarios() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[80px]">Foto</TableHead>
               <TableHead>Nome</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Permissão</TableHead>
@@ -61,6 +63,14 @@ export default function Usuarios() {
           <TableBody>
             {filteredUsers.map((user) => (
               <TableRow key={user.id}>
+                <TableCell>
+                  <Avatar>
+                    <AvatarImage src={user.foto} alt={user.nome} />
+                    <AvatarFallback>
+                      {user.nome.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </TableCell>
                 <TableCell className="font-medium">{user.nome}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>{user.role}</TableCell>
