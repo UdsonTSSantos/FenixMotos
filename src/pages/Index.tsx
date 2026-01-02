@@ -6,6 +6,7 @@ import {
   FileText,
   AlertTriangle,
   Building2,
+  UserCog,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
@@ -27,7 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 
 export default function Index() {
-  const { motos, financiamentos, empresa } = useData()
+  const { motos, financiamentos, empresa, currentUser } = useData()
 
   // Metrics
   const stockCount = motos.filter((m) => m.status === 'estoque').length
@@ -67,17 +68,31 @@ export default function Index() {
     )
     .slice(0, 5)
 
+  // Check permissions for Collaborators button
+  const canManageCollaborators =
+    currentUser &&
+    (currentUser.role === 'Administrador' || currentUser.role === 'Gerente')
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">
           {empresa.nome || 'Dashboard'}
         </h1>
-        <Button asChild variant="outline">
-          <Link to="/empresa">
-            <Building2 className="mr-2 h-4 w-4" /> Empresa
-          </Link>
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          {canManageCollaborators && (
+            <Button asChild variant="outline">
+              <Link to="/colaboradores">
+                <UserCog className="mr-2 h-4 w-4" /> Colaboradores
+              </Link>
+            </Button>
+          )}
+          <Button asChild variant="outline">
+            <Link to="/empresa">
+              <Building2 className="mr-2 h-4 w-4" /> Empresa
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

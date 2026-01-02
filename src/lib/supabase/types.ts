@@ -522,30 +522,48 @@ export type Database = {
       profiles: {
         Row: {
           ativo: boolean | null
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cpf: string | null
           created_at: string
           email: string | null
+          endereco: string | null
           foto: string | null
           id: string
           nome: string
           role: string
+          uf: string | null
         }
         Insert: {
           ativo?: boolean | null
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
+          endereco?: string | null
           foto?: string | null
           id: string
           nome: string
           role?: string
+          uf?: string | null
         }
         Update: {
           ativo?: boolean | null
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string | null
+          endereco?: string | null
           foto?: string | null
           id?: string
           nome?: string
           role?: string
+          uf?: string | null
         }
         Relationships: []
       }
