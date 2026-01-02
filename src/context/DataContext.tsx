@@ -77,6 +77,7 @@ interface DataContextType {
 
   addOrcamento: (orcamento: Omit<Orcamento, 'id'>) => void
   updateOrcamento: (id: string, orcamento: Partial<Orcamento>) => void
+  deleteOrcamento: (id: string) => void
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -596,40 +597,94 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const updateOrcamento = (id: string, data: Partial<Orcamento>) => {
-    // Handle inventory deduction if status changes to 'aprovado'
     const oldOrcamento = orcamentos.find((o) => o.id === id)
+    if (!oldOrcamento) return
 
-    if (
-      oldOrcamento &&
-      data.status === 'aprovado' &&
-      oldOrcamento.status !== 'aprovado'
-    ) {
-      const itemsToDeduct = data.itens || oldOrcamento.itens
+    // Inventory Management Logic
+    const newStatus = data.status || oldOrcamento.status
+    const oldStatus = oldOrcamento.status
 
-      setPecas((currentPecas) => {
-        return currentPecas.map((peca) => {
-          const item = itemsToDeduct.find(
-            (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
-          )
-          if (item) {
-            return {
-              ...peca,
-              quantidade: peca.quantidade - item.quantidade,
+    if (newStatus !== oldStatus) {
+      if (newStatus === 'aprovado') {
+        // Status changed TO 'aprovado': Deduct items from stock
+        const itemsToDeduct = data.itens || oldOrcamento.itens
+        setPecas((currentPecas) => {
+          return currentPecas.map((peca) => {
+            const item = itemsToDeduct.find(
+              (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
+            )
+            if (item) {
+              return {
+                ...peca,
+                quantidade: peca.quantidade - item.quantidade,
+              }
             }
-          }
-          return peca
+            return peca
+          })
         })
-      })
-      toast({
-        title: 'Estoque Atualizado',
-        description: 'Quantidades deduzidas do estoque.',
-      })
+        toast({
+          title: 'Estoque Atualizado',
+          description: 'Itens deduzidos do estoque.',
+        })
+      } else if (oldStatus === 'aprovado') {
+        // Status changed FROM 'aprovado' (to 'rejeitado', 'aberto', etc): Restore items to stock
+        const itemsToRestore = oldOrcamento.itens // Restore based on what was previously approved
+        setPecas((currentPecas) => {
+          return currentPecas.map((peca) => {
+            const item = itemsToRestore.find(
+              (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
+            )
+            if (item) {
+              return {
+                ...peca,
+                quantidade: peca.quantidade + item.quantidade,
+              }
+            }
+            return peca
+          })
+        })
+        toast({
+          title: 'Estoque Atualizado',
+          description: 'Itens retornados ao estoque.',
+        })
+      }
     }
 
     setOrcamentos((prev) =>
       prev.map((o) => (o.id === id ? { ...o, ...data } : o)),
     )
     toast({ title: 'Sucesso', description: 'Orçamento atualizado.' })
+  }
+
+  const deleteOrcamento = (id: string) => {
+    const orcamento = orcamentos.find((o) => o.id === id)
+    if (!orcamento) return
+
+    // Restore stock if deleting an approved quote
+    if (orcamento.status === 'aprovado') {
+      const itemsToRestore = orcamento.itens
+      setPecas((currentPecas) => {
+        return currentPecas.map((peca) => {
+          const item = itemsToRestore.find(
+            (i) => i.tipo === 'peca' && i.referenciaId === peca.id,
+          )
+          if (item) {
+            return {
+              ...peca,
+              quantidade: peca.quantidade + item.quantidade,
+            }
+          }
+          return peca
+        })
+      })
+      toast({
+        title: 'Estoque Restaurado',
+        description: 'Itens do orçamento excluído retornaram ao estoque.',
+      })
+    }
+
+    setOrcamentos(orcamentos.filter((o) => o.id !== id))
+    toast({ title: 'Sucesso', description: 'Orçamento removido.' })
   }
 
   return (
@@ -668,6 +723,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteServico,
         addOrcamento,
         updateOrcamento,
+        deleteOrcamento,
       }}
     >
       {children}

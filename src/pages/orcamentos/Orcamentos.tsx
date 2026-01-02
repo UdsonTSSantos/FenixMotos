@@ -10,13 +10,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Search, Edit } from 'lucide-react'
+import { Plus, Search, Edit, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 export default function Orcamentos() {
-  const { orcamentos, clientes, usuarios } = useData()
+  const { orcamentos, clientes, usuarios, deleteOrcamento } = useData()
   const [filter, setFilter] = useState('')
 
   const getClienteName = (id: string) =>
@@ -82,16 +93,49 @@ export default function Orcamentos() {
                 <TableCell>
                   <Badge
                     variant={orc.status === 'aprovado' ? 'default' : 'outline'}
+                    className={
+                      orc.status === 'aprovado' ? 'bg-emerald-600' : ''
+                    }
                   >
                     {orc.status}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link to={`/orcamentos/${orc.id}`}>
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="icon" asChild>
+                      <Link to={`/orcamentos/${orc.id}`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Excluir Orçamento?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita.
+                            {orc.status === 'aprovado' &&
+                              ' O estoque reservado para este orçamento será devolvido.'}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteOrcamento(orc.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

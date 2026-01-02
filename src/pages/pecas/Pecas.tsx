@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Search, Upload, FileDown } from 'lucide-react'
+import { Plus, Search, Upload, FileDown, Edit } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   Dialog,
@@ -21,20 +21,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Peca } from '@/types'
 
 export default function Pecas() {
-  const { pecas, importPecasXML, addPeca } = useData()
+  const { pecas, importPecasXML, addPeca, updatePeca, currentUser } = useData()
   const [filter, setFilter] = useState('')
   const [isImportOpen, setIsImportOpen] = useState(false)
-  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingPeca, setEditingPeca] = useState<Peca | null>(null)
 
-  // Manual Add State
+  // Manual Add/Edit State
   const [newCodigo, setNewCodigo] = useState('')
   const [newNome, setNewNome] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [newQtd, setNewQtd] = useState('')
   const [newCusto, setNewCusto] = useState('')
   const [newVenda, setNewVenda] = useState('')
+
+  const isAdmin = currentUser?.role === 'Administrador'
 
   const filteredPecas = pecas
     .filter(
@@ -57,25 +61,46 @@ export default function Pecas() {
     reader.readAsText(file)
   }
 
-  const handleAddManual = () => {
+  const handleOpenForm = (peca?: Peca) => {
+    if (peca) {
+      setEditingPeca(peca)
+      setNewCodigo(peca.codigo)
+      setNewNome(peca.nome)
+      setNewDesc(peca.descricao)
+      setNewQtd(peca.quantidade.toString())
+      setNewCusto(formatCurrency(peca.precoCusto))
+      setNewVenda(formatCurrency(peca.precoVenda))
+    } else {
+      setEditingPeca(null)
+      setNewCodigo('')
+      setNewNome('')
+      setNewDesc('')
+      setNewQtd('')
+      setNewCusto('')
+      setNewVenda('')
+    }
+    setIsFormOpen(true)
+  }
+
+  const handleSaveManual = () => {
     if (!newNome || !newVenda) return
 
-    addPeca({
+    const pecaData = {
       codigo: newCodigo || `MAN-${Math.random().toString(36).substr(2, 4)}`,
       nome: newNome,
       descricao: newDesc,
       quantidade: Number(newQtd),
       precoCusto: parseCurrency(newCusto),
       precoVenda: parseCurrency(newVenda),
-    })
+    }
 
-    setIsAddOpen(false)
-    setNewCodigo('')
-    setNewNome('')
-    setNewDesc('')
-    setNewQtd('')
-    setNewCusto('')
-    setNewVenda('')
+    if (editingPeca) {
+      updatePeca(editingPeca.id, pecaData)
+    } else {
+      addPeca(pecaData)
+    }
+
+    setIsFormOpen(false)
   }
 
   const handleCurrencyInput =
@@ -87,8 +112,6 @@ export default function Pecas() {
     }
 
   const exportToExcel = () => {
-    // Generate CSV (Excel compatible)
-    // Ensure alphabetical sort
     const sortedForExport = [...filteredPecas].sort((a, b) =>
       a.nome.localeCompare(b.nome),
     )
@@ -137,7 +160,7 @@ export default function Pecas() {
           <Button variant="outline" onClick={() => setIsImportOpen(true)}>
             <Upload className="mr-2 h-4 w-4" /> Importar XML
           </Button>
-          <Button onClick={() => setIsAddOpen(true)}>
+          <Button onClick={() => handleOpenForm()}>
             <Plus className="mr-2 h-4 w-4" /> Acrescentar nova peça manualmente
           </Button>
         </div>
@@ -164,6 +187,7 @@ export default function Pecas() {
               <TableHead>Descrição</TableHead>
               <TableHead>Qtd.</TableHead>
               <TableHead>Preço Venda</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -174,12 +198,22 @@ export default function Pecas() {
                 <TableCell>{peca.descricao}</TableCell>
                 <TableCell>{peca.quantidade}</TableCell>
                 <TableCell>{formatCurrency(peca.precoVenda)}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleOpenForm(peca)}
+                    title="Editar Peça"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
             {filteredPecas.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhuma peça encontrada.
@@ -218,12 +252,16 @@ export default function Pecas() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Adicionar Peça</DialogTitle>
+            <DialogTitle>
+              {editingPeca ? 'Editar Peça' : 'Adicionar Peça'}
+            </DialogTitle>
             <DialogDescription>
-              Cadastro manual de peça no estoque.
+              {editingPeca
+                ? 'Atualize os dados da peça no estoque.'
+                : 'Cadastro manual de peça no estoque.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -270,6 +308,12 @@ export default function Pecas() {
                 value={newQtd}
                 onChange={(e) => setNewQtd(e.target.value)}
                 className="col-span-3"
+                disabled={editingPeca !== null && !isAdmin}
+                title={
+                  editingPeca !== null && !isAdmin
+                    ? 'Apenas administradores podem alterar a quantidade manualmente.'
+                    : ''
+                }
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -296,7 +340,7 @@ export default function Pecas() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleAddManual}>Salvar</Button>
+            <Button onClick={handleSaveManual}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
