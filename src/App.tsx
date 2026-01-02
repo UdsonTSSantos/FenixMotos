@@ -28,6 +28,8 @@ import FinanciamentoExtrato from '@/pages/financiamentos/FinanciamentoExtrato'
 import Empresa from '@/pages/empresa/Empresa'
 import Usuarios from '@/pages/usuarios/Usuarios'
 import UsuarioForm from '@/pages/usuarios/UsuarioForm'
+import Colaboradores from '@/pages/colaboradores/Colaboradores'
+import ColaboradorForm from '@/pages/colaboradores/ColaboradorForm'
 import Pecas from '@/pages/pecas/Pecas'
 import Servicos from '@/pages/servicos/Servicos'
 import Orcamentos from '@/pages/orcamentos/Orcamentos'
@@ -106,6 +108,16 @@ const App = () => (
                 <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/usuarios/novo" element={<UsuarioForm />} />
                 <Route path="/usuarios/:id" element={<UsuarioForm />} />
+
+                <Route path="/colaboradores" element={<Colaboradores />} />
+                <Route
+                  path="/colaboradores/novo"
+                  element={<ColaboradorForm />}
+                />
+                <Route
+                  path="/colaboradores/:id"
+                  element={<ColaboradorForm />}
+                />
 
                 <Route path="/pecas" element={<Pecas />} />
                 <Route path="/servicos" element={<Servicos />} />

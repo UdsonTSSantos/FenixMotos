@@ -59,11 +59,11 @@ export type Database = {
           cep: string | null
           cidade: string | null
           cnh: string
-          cnh_validade: string
+          cnhValidade: string
           complemento: string | null
           cpf: string | null
           created_at: string
-          data_nascimento: string | null
+          dataNascimento: string | null
           email: string | null
           endereco: string | null
           estado: string | null
@@ -87,11 +87,11 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           cnh: string
-          cnh_validade: string
+          cnhValidade: string
           complemento?: string | null
           cpf?: string | null
           created_at?: string
-          data_nascimento?: string | null
+          dataNascimento?: string | null
           email?: string | null
           endereco?: string | null
           estado?: string | null
@@ -115,11 +115,11 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           cnh?: string
-          cnh_validade?: string
+          cnhValidade?: string
           complemento?: string | null
           cpf?: string | null
           created_at?: string
-          data_nascimento?: string | null
+          dataNascimento?: string | null
           email?: string | null
           endereco?: string | null
           estado?: string | null
@@ -266,11 +266,11 @@ export type Database = {
           chassis: string | null
           cor: string
           created_at: string
-          data_licenciamento: string | null
+          dataLicenciamento: string | null
           fabricante: string
           id: string
           imagem: string | null
-          km_atual: number | null
+          kmAtual: number | null
           modelo: string
           placa: string | null
           status: string
@@ -281,11 +281,11 @@ export type Database = {
           chassis?: string | null
           cor: string
           created_at?: string
-          data_licenciamento?: string | null
+          dataLicenciamento?: string | null
           fabricante: string
           id?: string
           imagem?: string | null
-          km_atual?: number | null
+          kmAtual?: number | null
           modelo: string
           placa?: string | null
           status?: string
@@ -296,11 +296,11 @@ export type Database = {
           chassis?: string | null
           cor?: string
           created_at?: string
-          data_licenciamento?: string | null
+          dataLicenciamento?: string | null
           fabricante?: string
           id?: string
           imagem?: string | null
-          km_atual?: number | null
+          kmAtual?: number | null
           modelo?: string
           placa?: string | null
           status?: string

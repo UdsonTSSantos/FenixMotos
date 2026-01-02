@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   Shield,
   BarChart3,
+  UserCog,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -45,7 +46,7 @@ export function AppSidebar() {
   ]
 
   const adminItems = [
-    { title: 'Usuários', url: '/usuarios', icon: Shield },
+    { title: 'Colaboradores', url: '/colaboradores', icon: UserCog },
     { title: 'Comissões', url: '/relatorios/comissoes', icon: BarChart3 },
   ]
 

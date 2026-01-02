@@ -118,6 +118,12 @@ export interface Usuario {
   role: UserRole
   ativo: boolean
   foto?: string
+  endereco?: string
+  bairro?: string
+  cidade?: string
+  cep?: string
+  uf?: string
+  cpf?: string
 }
 
 export interface Peca {

@@ -19,7 +19,20 @@ Deno.serve(async (req) => {
       },
     )
 
-    const { email, password, nome, role, foto, ativo } = await req.json()
+    const {
+      email,
+      password,
+      nome,
+      role,
+      foto,
+      ativo,
+      endereco,
+      bairro,
+      cidade,
+      cep,
+      uf,
+      cpf,
+    } = await req.json()
 
     const { data: user, error: userError } =
       await supabaseClient.auth.admin.createUser({
@@ -42,6 +55,12 @@ Deno.serve(async (req) => {
           role,
           foto,
           ativo: ativo !== undefined ? ativo : true,
+          endereco,
+          bairro,
+          cidade,
+          cep,
+          uf,
+          cpf,
         })
 
       if (profileError) throw profileError
