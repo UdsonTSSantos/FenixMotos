@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -27,11 +27,13 @@ import { Switch } from '@/components/ui/switch'
 import { USER_ROLES } from '@/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Upload } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from '@/hooks/use-toast'
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome muito curto'),
   email: z.string().email('Email inválido'),
-  senha: z.string().optional(), // Optional on edit
+  senha: z.string().optional(),
   role: z.enum([
     'Administrador',
     'Diretor',
@@ -49,6 +51,7 @@ export default function UsuarioForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { usuarios, addUsuario, updateUsuario } = useData()
+  const [uploading, setUploading] = useState(false)
 
   const isEditing = !!id
   const existing = usuarios.find((u) => u.id === id)
@@ -72,7 +75,7 @@ export default function UsuarioForm() {
         email: existing.email,
         role: existing.role,
         ativo: existing.ativo,
-        senha: '', // Don't show password
+        senha: '',
         foto: existing.foto || '',
       })
     }
@@ -81,7 +84,7 @@ export default function UsuarioForm() {
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     if (isEditing && id) {
       const updateData: any = { ...values }
-      if (!values.senha) delete updateData.senha // Don't update if empty
+      if (!values.senha) delete updateData.senha
       updateUsuario(id, updateData)
     } else {
       if (!values.senha) {
@@ -95,14 +98,34 @@ export default function UsuarioForm() {
     navigate('/usuarios')
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        form.setValue('foto', reader.result as string)
+      setUploading(true)
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random()}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file)
+
+      setUploading(false)
+      if (error) {
+        toast({
+          title: 'Erro',
+          description: error.message,
+          variant: 'destructive',
+        })
+        return
       }
-      reader.readAsDataURL(file)
+
+      if (data) {
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from('avatars').getPublicUrl(filePath)
+        form.setValue('foto', publicUrl)
+      }
     }
   }
 
@@ -131,9 +154,10 @@ export default function UsuarioForm() {
                       variant="outline"
                       size="sm"
                       className="relative overflow-hidden"
+                      disabled={uploading}
                     >
                       <Upload className="mr-2 h-4 w-4" />
-                      Carregar Foto
+                      {uploading ? 'Enviando...' : 'Carregar Foto'}
                       <Input
                         type="file"
                         accept="image/*"
@@ -141,21 +165,7 @@ export default function UsuarioForm() {
                         onChange={handleFileChange}
                       />
                     </Button>
-                    {form.watch('foto') && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => form.setValue('foto', '')}
-                      >
-                        Remover
-                      </Button>
-                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Formatos: JPG, PNG
-                  </p>
                 </div>
               </div>
 
@@ -180,32 +190,28 @@ export default function UsuarioForm() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" {...field} />
+                      <Input type="email" {...field} disabled={isEditing} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="senha"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Senha</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        {...field}
-                        placeholder={
-                          isEditing ? 'Deixe em branco para não alterar' : ''
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {!isEditing && (
+                <FormField
+                  control={form.control}
+                  name="senha"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Senha</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

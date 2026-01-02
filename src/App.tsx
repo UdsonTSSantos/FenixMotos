@@ -11,7 +11,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import Layout from '@/components/Layout'
 import Index from '@/pages/Index'
 import NotFound from '@/pages/NotFound'
-import { DataProvider, useData } from '@/context/DataContext'
+import { DataProvider } from '@/context/DataContext'
+import { AuthProvider, useAuth } from '@/hooks/use-auth'
 import { ThemeProvider } from '@/components/theme-provider'
 import Login from '@/pages/Login'
 
@@ -34,10 +35,18 @@ import OrcamentoForm from '@/pages/orcamentos/OrcamentoForm'
 import Comissoes from '@/pages/relatorios/Comissoes'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { currentUser } = useData()
+  const { user, loading } = useAuth()
   const location = useLocation()
 
-  if (!currentUser) {
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        Carregando...
+      </div>
+    )
+  }
+
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
@@ -50,65 +59,67 @@ const App = () => (
   >
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <TooltipProvider>
-        <DataProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/login" element={<Login />} />
+        <AuthProvider>
+          <DataProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/login" element={<Login />} />
 
-            <Route
-              element={
-                <RequireAuth>
-                  <Layout />
-                </RequireAuth>
-              }
-            >
-              <Route path="/" element={<Index />} />
-
-              <Route path="/empresa" element={<Empresa />} />
-
-              <Route path="/motos" element={<Motos />} />
-              <Route path="/motos/nova" element={<MotoForm />} />
-              <Route path="/motos/:id" element={<MotoForm />} />
-
-              <Route path="/clientes" element={<Clientes />} />
-              <Route path="/clientes/novo" element={<ClienteForm />} />
-              <Route path="/clientes/:id" element={<ClienteForm />} />
-
-              <Route path="/financiamentos" element={<Financiamentos />} />
               <Route
-                path="/financiamentos/novo"
-                element={<FinanciamentoForm />}
-              />
-              <Route
-                path="/financiamentos/:id/editar"
-                element={<FinanciamentoForm />}
-              />
-              <Route
-                path="/financiamentos/:id"
-                element={<FinanciamentoDetails />}
-              />
-              <Route
-                path="/financiamentos/:id/extrato"
-                element={<FinanciamentoExtrato />}
-              />
+                element={
+                  <RequireAuth>
+                    <Layout />
+                  </RequireAuth>
+                }
+              >
+                <Route path="/" element={<Index />} />
 
-              <Route path="/usuarios" element={<Usuarios />} />
-              <Route path="/usuarios/novo" element={<UsuarioForm />} />
-              <Route path="/usuarios/:id" element={<UsuarioForm />} />
+                <Route path="/empresa" element={<Empresa />} />
 
-              <Route path="/pecas" element={<Pecas />} />
-              <Route path="/servicos" element={<Servicos />} />
+                <Route path="/motos" element={<Motos />} />
+                <Route path="/motos/nova" element={<MotoForm />} />
+                <Route path="/motos/:id" element={<MotoForm />} />
 
-              <Route path="/orcamentos" element={<Orcamentos />} />
-              <Route path="/orcamentos/novo" element={<OrcamentoForm />} />
-              <Route path="/orcamentos/:id" element={<OrcamentoForm />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/clientes/novo" element={<ClienteForm />} />
+                <Route path="/clientes/:id" element={<ClienteForm />} />
 
-              <Route path="/relatorios/comissoes" element={<Comissoes />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </DataProvider>
+                <Route path="/financiamentos" element={<Financiamentos />} />
+                <Route
+                  path="/financiamentos/novo"
+                  element={<FinanciamentoForm />}
+                />
+                <Route
+                  path="/financiamentos/:id/editar"
+                  element={<FinanciamentoForm />}
+                />
+                <Route
+                  path="/financiamentos/:id"
+                  element={<FinanciamentoDetails />}
+                />
+                <Route
+                  path="/financiamentos/:id/extrato"
+                  element={<FinanciamentoExtrato />}
+                />
+
+                <Route path="/usuarios" element={<Usuarios />} />
+                <Route path="/usuarios/novo" element={<UsuarioForm />} />
+                <Route path="/usuarios/:id" element={<UsuarioForm />} />
+
+                <Route path="/pecas" element={<Pecas />} />
+                <Route path="/servicos" element={<Servicos />} />
+
+                <Route path="/orcamentos" element={<Orcamentos />} />
+                <Route path="/orcamentos/novo" element={<OrcamentoForm />} />
+                <Route path="/orcamentos/:id" element={<OrcamentoForm />} />
+
+                <Route path="/relatorios/comissoes" element={<Comissoes />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </DataProvider>
+        </AuthProvider>
       </TooltipProvider>
     </ThemeProvider>
   </BrowserRouter>

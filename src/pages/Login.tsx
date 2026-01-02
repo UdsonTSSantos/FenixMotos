@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useData } from '@/context/DataContext'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,20 +18,21 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const { login } = useData()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
   const from = location.state?.from?.pathname || '/'
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (login(email, password)) {
+    const { error } = await signIn(email, password)
+    if (!error) {
       navigate(from, { replace: true })
     } else {
-      setError('Credenciais inválidas.')
+      setError(error.message || 'Credenciais inválidas.')
     }
   }
 
