@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -25,10 +25,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { USER_ROLES, ESTADOS_BR } from '@/types'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Upload, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase/client'
-import { toast } from '@/hooks/use-toast'
 import { Separator } from '@/components/ui/separator'
 
 const formSchema = z.object({
@@ -45,7 +41,6 @@ const formSchema = z.object({
     'Financeiro',
   ]),
   ativo: z.boolean().default(true),
-  foto: z.string().optional(),
   endereco: z.string().optional(),
   bairro: z.string().optional(),
   cidade: z.string().optional(),
@@ -58,7 +53,6 @@ export default function ColaboradorForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { usuarios, addUsuario, updateUsuario } = useData()
-  const [uploading, setUploading] = useState(false)
 
   const isEditing = !!id
   const existing = usuarios.find((u) => u.id === id)
@@ -71,7 +65,6 @@ export default function ColaboradorForm() {
       senha: '',
       role: 'Vendedor',
       ativo: true,
-      foto: '',
       endereco: '',
       bairro: '',
       cidade: '',
@@ -89,7 +82,6 @@ export default function ColaboradorForm() {
         role: existing.role as any,
         ativo: existing.ativo,
         senha: '',
-        foto: existing.foto || '',
         endereco: existing.endereco || '',
         bairro: existing.bairro || '',
         cidade: existing.cidade || '',
@@ -117,51 +109,6 @@ export default function ColaboradorForm() {
     navigate('/colaboradores')
   }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Arquivo inválido',
-          description:
-            'Por favor, selecione um arquivo de imagem (jpg, png, webp).',
-          variant: 'destructive',
-        })
-        return
-      }
-
-      setUploading(true)
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`
-      const filePath = `${fileName}`
-
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file)
-
-      setUploading(false)
-      if (error) {
-        toast({
-          title: 'Erro no upload',
-          description: error.message,
-          variant: 'destructive',
-        })
-        return
-      }
-
-      if (data) {
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from('avatars').getPublicUrl(filePath)
-        form.setValue('foto', publicUrl)
-        toast({
-          title: 'Foto carregada',
-          description: 'A imagem foi enviada com sucesso.',
-        })
-      }
-    }
-  }
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <Card>
@@ -173,48 +120,6 @@ export default function ColaboradorForm() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="flex flex-col items-center gap-4 justify-center pb-4">
-                <Avatar className="h-24 w-24 border-2 border-border">
-                  <AvatarImage src={form.watch('foto')} />
-                  <AvatarFallback className="text-lg">
-                    {form.watch('nome')
-                      ? form.watch('nome').substring(0, 2).toUpperCase()
-                      : '??'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="relative overflow-hidden cursor-pointer"
-                    disabled={uploading}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {uploading ? 'Enviando...' : 'Carregar Foto'}
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="absolute inset-0 opacity-0 cursor-pointer h-full w-full"
-                      onChange={handleFileChange}
-                      disabled={uploading}
-                    />
-                  </Button>
-                  {form.watch('foto') && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => form.setValue('foto', '')}
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Remover
-                    </Button>
-                  )}
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}

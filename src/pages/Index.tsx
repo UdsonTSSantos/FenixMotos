@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Building2,
   UserCog,
+  Users,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
@@ -166,55 +167,88 @@ export default function Index() {
             </ChartContainer>
           </CardContent>
         </Card>
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Vendas Recentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Contrato</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentSales.map((sale) => (
-                  <TableRow key={sale.id}>
-                    <TableCell className="font-medium">
-                      {new Date(sale.dataContrato).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>{formatCurrency(sale.valorTotal)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          sale.status === 'ativo'
-                            ? 'outline'
-                            : sale.status === 'quitado'
-                              ? 'secondary'
-                              : 'destructive'
-                        }
-                      >
-                        {sale.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {recentSales.length === 0 && (
+
+        <div className="col-span-3 space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Acesso Rápido</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              <Button
+                asChild
+                variant="outline"
+                className="justify-start h-12 text-base"
+              >
+                <Link to="/clientes">
+                  <Users className="mr-2 h-5 w-5" />
+                  Clientes
+                </Link>
+              </Button>
+              {canManageCollaborators && (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="justify-start h-12 text-base"
+                >
+                  <Link to="/colaboradores">
+                    <UserCog className="mr-2 h-5 w-5" />
+                    Colaboradores
+                  </Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="flex-1">
+            <CardHeader>
+              <CardTitle>Vendas Recentes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      className="text-center text-muted-foreground"
-                    >
-                      Nenhuma venda recente.
-                    </TableCell>
+                    <TableHead>Contrato</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
+                <TableBody>
+                  {recentSales.map((sale) => (
+                    <TableRow key={sale.id}>
+                      <TableCell className="font-medium">
+                        {new Date(sale.dataContrato).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>{formatCurrency(sale.valorTotal)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            sale.status === 'ativo'
+                              ? 'outline'
+                              : sale.status === 'quitado'
+                                ? 'secondary'
+                                : 'destructive'
+                          }
+                        >
+                          {sale.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {recentSales.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={3}
+                        className="text-center text-muted-foreground"
+                      >
+                        Nenhuma venda recente.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
