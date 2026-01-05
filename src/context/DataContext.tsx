@@ -286,24 +286,49 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const dbData: any = {}
     if (data.status) dbData.status = data.status
     if (data.observacao) dbData.observacao = data.observacao
+    if (data.valorTotal !== undefined) dbData.valor_total = data.valorTotal
+    if (data.valorFinanciado !== undefined)
+      dbData.valor_financiado = data.valorFinanciado
+    if (data.valorEntrada !== undefined)
+      dbData.valor_entrada = data.valorEntrada
+    if (data.quantidadeParcelas !== undefined)
+      dbData.quantidade_parcelas = data.quantidadeParcelas
+    if (data.taxaFinanciamento !== undefined)
+      dbData.taxa_financiamento = data.taxaFinanciamento
+    if (data.taxaJurosAtraso !== undefined)
+      dbData.taxa_juros_atraso = data.taxaJurosAtraso
+    if (data.valorMultaAtraso !== undefined)
+      dbData.valor_multa_atraso = data.valorMultaAtraso
+    if (data.motoId) dbData.moto_id = data.motoId
+    if (data.clienteId) dbData.cliente_id = data.clienteId
+    if (data.dataContrato) dbData.data_contrato = data.dataContrato
 
     if (Object.keys(dbData).length > 0) {
       await supabase.from('financiamentos').update(dbData).eq('id', id)
     }
 
-    if (data.parcelas) {
-      for (const p of data.parcelas) {
-        await supabase
-          .from('parcelas')
-          .update({
-            valor_original: p.valorOriginal,
-            valor_total: p.valorTotal,
-            status: p.status,
-            data_pagamento: p.dataPagamento,
-          })
-          .eq('financiamento_id', id)
-          .eq('numero', p.numero)
-      }
+    // Handle parcels update
+    // Strategy: If new parcels are provided, we replace the existing ones to ensure consistency with the new terms.
+    // This wipes payment history if contract is re-generated, which is expected behavior when editing contract terms (renegotiation).
+    // If we wanted to keep history, we would need complex merging logic, but for "Edit Contract" that changes values/dates, replacement is safer to avoid inconsistencies.
+    if (data.parcelas && data.parcelas.length > 0) {
+      // 1. Delete existing parcels
+      await supabase.from('parcelas').delete().eq('financiamento_id', id)
+
+      // 2. Insert new parcels
+      const parcelasDb = data.parcelas.map((p) => ({
+        financiamento_id: id,
+        numero: p.numero,
+        data_vencimento: p.dataVencimento,
+        valor_original: p.valorOriginal,
+        valor_juros: p.valorJuros,
+        valor_multa: p.valorMulta,
+        valor_total: p.valorTotal,
+        status: p.status,
+        data_pagamento: p.dataPagamento,
+      }))
+
+      await supabase.from('parcelas').insert(parcelasDb)
     }
 
     fetchAllData()

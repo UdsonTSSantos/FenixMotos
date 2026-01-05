@@ -201,6 +201,7 @@ export type Database = {
           data_contrato: string
           id: string
           moto_id: string | null
+          numero_contrato: number | null
           observacao: string | null
           quantidade_parcelas: number
           status: string
@@ -217,6 +218,7 @@ export type Database = {
           data_contrato: string
           id?: string
           moto_id?: string | null
+          numero_contrato?: number | null
           observacao?: string | null
           quantidade_parcelas: number
           status?: string
@@ -233,6 +235,7 @@ export type Database = {
           data_contrato?: string
           id?: string
           moto_id?: string | null
+          numero_contrato?: number | null
           observacao?: string | null
           quantidade_parcelas?: number
           status?: string

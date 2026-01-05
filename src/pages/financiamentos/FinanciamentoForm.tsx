@@ -63,6 +63,9 @@ export default function FinanciamentoForm() {
   const isEditing = !!id
   const existingFinanciamento = financiamentos.find((f) => f.id === id)
 
+  // Wait for data if editing
+  const isLoading = isEditing && !existingFinanciamento
+
   const motosDisponiveis = motos.filter(
     (m) =>
       m.status === 'estoque' ||
@@ -99,7 +102,8 @@ export default function FinanciamentoForm() {
       const parcelValue =
         existingFinanciamento.parcelas.length > 0
           ? existingFinanciamento.parcelas[0].valorOriginal
-          : 0
+          : existingFinanciamento.valorFinanciado /
+            existingFinanciamento.quantidadeParcelas
 
       const firstParcelDate =
         existingFinanciamento.parcelas.length > 0
@@ -120,8 +124,11 @@ export default function FinanciamentoForm() {
         observacao: existingFinanciamento.observacao || '',
         dataPrimeiraParcela: firstParcelDate,
       })
+      // Ensure we flag manual parcel as false initially to allow recalc unless user edits
+      // Actually, if we are editing, we might want to respect the stored value.
+      // But for consistency with "Edit form must pre-populate", we rely on reset.
     }
-  }, [isEditing, existingFinanciamento, form])
+  }, [isEditing, existingFinanciamento, form]) // Removed 'defaultFirstInstallment' to avoid re-trigger
 
   const selectedMoto = motos.find((m) => m.id === selectedMotoId)
 
@@ -132,8 +139,10 @@ export default function FinanciamentoForm() {
 
   useEffect(() => {
     if (isManualParcel) return
-
     if (!selectedMoto) return
+    // Only auto-calc if NOT editing or if user interacts?
+    // User requirement: "Automated Parcel Synchronization".
+    // We should allow calculation.
 
     const entradaValue = parseCurrency(watchEntrada || '0')
     const principal = Math.max(0, selectedMoto.valor - entradaValue)
@@ -145,13 +154,21 @@ export default function FinanciamentoForm() {
     const finalParcel = baseParcel + interestPart
 
     if (!isNaN(finalParcel) && finalParcel !== Infinity) {
-      form.setValue('valorParcela', formatCurrency(finalParcel), {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true,
-      })
+      // Avoid overwriting with 0 if principal is 0 because moto value not loaded yet
+      if (selectedMoto.valor > 0) {
+        form.setValue('valorParcela', formatCurrency(finalParcel), {
+          shouldValidate: true,
+        })
+      }
     }
-  }, [selectedMoto, watchEntrada, watchParcelas, watchTaxaFinanciamento])
+  }, [
+    selectedMoto,
+    watchEntrada,
+    watchParcelas,
+    watchTaxaFinanciamento,
+    isManualParcel,
+    form,
+  ])
 
   const handleManualParcelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsManualParcel(true)
@@ -167,7 +184,17 @@ export default function FinanciamentoForm() {
     }
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!selectedMoto) return
+    // If we are editing, we use the moto from the record or selected one
+    const moto =
+      isEditing && !selectedMoto ? existingFinanciamento : selectedMoto
+    const motoVal = selectedMoto
+      ? selectedMoto.valor
+      : isEditing && existingFinanciamento
+        ? 0
+        : 0
+    // Wait, if moto is sold, it might be in 'motos' list with status 'vendida'.
+    // `selectedMoto` comes from `motos.find`. `motos` contains all motos.
+    if (!selectedMoto && !isEditing) return
 
     const entrada = parseCurrency(values.valorEntrada)
     const parcelaVal = parseCurrency(values.valorParcela)
@@ -179,18 +206,25 @@ export default function FinanciamentoForm() {
         ? existingFinanciamento.dataContrato
         : new Date().toISOString()
 
-    // Auto-generate parcels based on first installment date and 30-day interval
-    const firstDate = parseISO(values.dataPrimeiraParcela)
+    // Date Generation Logic Fix
+    // Ensure we have a valid date string
+    const firstDateString = values.dataPrimeiraParcela
+    let firstDate: Date
+    try {
+      firstDate = parseISO(firstDateString)
+      if (isNaN(firstDate.getTime())) throw new Error('Invalid Date')
+    } catch (e) {
+      form.setError('dataPrimeiraParcela', { message: 'Data inválida' })
+      return
+    }
 
     const newParcelas = Array.from({ length: values.quantidadeParcelas }).map(
       (_, i) => {
-        // First parcel is i=0, date is firstDate
-        // Subsequent parcels are +30 days * i
+        // Correctly add 30 days * i
         const dueDate = addDays(firstDate, i * 30)
-
         return {
           numero: i + 1,
-          dataVencimento: dueDate.toISOString(),
+          dataVencimento: dueDate.toISOString(), // ISO 8601
           valorOriginal: parcelaVal,
           valorJuros: 0,
           valorMulta: 0,
@@ -224,6 +258,14 @@ export default function FinanciamentoForm() {
       })
       navigate('/financiamentos')
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-8">
+        Carregando dados do contrato...
+      </div>
+    )
   }
 
   const entradaValue = parseCurrency(watchEntrada || '0')
@@ -520,9 +562,11 @@ export default function FinanciamentoForm() {
                       </div>
                       <div className="text-xs text-muted-foreground mt-1 text-right">
                         1ª Parcela em:{' '}
-                        {new Date(
-                          form.getValues('dataPrimeiraParcela'),
-                        ).toLocaleDateString()}
+                        {form.getValues('dataPrimeiraParcela')
+                          ? new Date(
+                              form.getValues('dataPrimeiraParcela'),
+                            ).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                          : '-'}
                       </div>
                     </div>
                   </div>
@@ -541,10 +585,7 @@ export default function FinanciamentoForm() {
                 >
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={!selectedMotoId || !valorFinanciadoDisplay}
-                >
+                <Button type="submit" disabled={!selectedMotoId && !isEditing}>
                   {isEditing ? 'Salvar Alterações' : 'Confirmar Financiamento'}
                 </Button>
               </div>

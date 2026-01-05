@@ -69,3 +69,18 @@ export const formatContractId = (id: string | number | undefined) => {
   }
   return id.substring(0, 8).toUpperCase()
 }
+
+export const formatDate = (dateString: string | undefined | null) => {
+  if (!dateString) return '-'
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return '-'
+    // Using UTC to avoid timezone shifts when displaying stored ISO dates
+    // Assuming dates are stored as ISO strings and we want to display the date part
+    // However, if the app uses local time for creation, standard toLocaleDateString might be better
+    // For consistency with the user story asking for DD/MM/YYYY specifically:
+    return date.toLocaleDateString('pt-BR')
+  } catch (e) {
+    return '-'
+  }
+}

@@ -22,7 +22,12 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatCurrency, parseCurrency, formatContractId } from '@/lib/utils'
+import {
+  formatCurrency,
+  parseCurrency,
+  formatContractId,
+  formatDate,
+} from '@/lib/utils'
 import {
   ArrowLeft,
   DollarSign,
@@ -233,9 +238,7 @@ export default function FinanciamentoDetails() {
               {financiamento.parcelas.map((parcela) => (
                 <TableRow key={parcela.numero}>
                   <TableCell>{parcela.numero}</TableCell>
-                  <TableCell>
-                    {new Date(parcela.dataVencimento).toLocaleDateString()}
-                  </TableCell>
+                  <TableCell>{formatDate(parcela.dataVencimento)}</TableCell>
                   <TableCell>{formatCurrency(parcela.valorOriginal)}</TableCell>
                   <TableCell className="text-red-500 font-medium">
                     {parcela.valorJuros + parcela.valorMulta > 0
@@ -245,11 +248,7 @@ export default function FinanciamentoDetails() {
                   <TableCell className="font-bold">
                     {formatCurrency(parcela.valorTotal)}
                   </TableCell>
-                  <TableCell>
-                    {parcela.dataPagamento
-                      ? new Date(parcela.dataPagamento).toLocaleDateString()
-                      : '-'}
-                  </TableCell>
+                  <TableCell>{formatDate(parcela.dataPagamento)}</TableCell>
                   <TableCell>
                     <Badge
                       variant={

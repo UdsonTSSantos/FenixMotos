@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Search, Eye } from 'lucide-react'
-import { formatCurrency, formatContractId } from '@/lib/utils'
+import { formatCurrency, formatContractId, formatDate } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import {
   Select,
@@ -102,9 +102,7 @@ export default function Financiamentos() {
                 </TableCell>
                 <TableCell>{getClienteName(fin.clienteId)}</TableCell>
                 <TableCell>{getMotoModel(fin.motoId)}</TableCell>
-                <TableCell>
-                  {new Date(fin.dataContrato).toLocaleDateString()}
-                </TableCell>
+                <TableCell>{formatDate(fin.dataContrato)}</TableCell>
                 <TableCell>{formatCurrency(fin.valorTotal)}</TableCell>
                 <TableCell>
                   <Badge
