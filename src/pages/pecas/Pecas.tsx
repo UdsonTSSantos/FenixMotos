@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Peca } from '@/types'
+import { toast } from 'sonner'
 
 export default function Pecas() {
   const { pecas, importPecasXML, addPeca, updatePeca, currentUser } = useData()
@@ -83,15 +84,28 @@ export default function Pecas() {
   }
 
   const handleSaveManual = () => {
-    if (!newNome || !newVenda) return
+    if (!newNome || !newVenda) {
+      toast.error('Preencha os campos obrigatórios')
+      return
+    }
+
+    // Safe parsing to avoid NaN
+    const priceCusto = parseCurrency(newCusto)
+    const priceVenda = parseCurrency(newVenda)
+    const quantity = parseInt(newQtd) || 0
+
+    if (isNaN(priceCusto) || isNaN(priceVenda)) {
+      toast.error('Valores inválidos')
+      return
+    }
 
     const pecaData = {
       codigo: newCodigo || `MAN-${Math.random().toString(36).substr(2, 4)}`,
       nome: newNome,
       descricao: newDesc,
-      quantidade: Number(newQtd),
-      precoCusto: parseCurrency(newCusto),
-      precoVenda: parseCurrency(newVenda),
+      quantidade: quantity,
+      precoCusto: priceCusto,
+      precoVenda: priceVenda,
     }
 
     if (editingPeca) {
@@ -108,7 +122,12 @@ export default function Pecas() {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const raw = e.target.value.replace(/\D/g, '')
       const number = Number(raw) / 100
-      setter(formatCurrency(number))
+      // Check for valid number
+      if (!isNaN(number)) {
+        setter(formatCurrency(number))
+      } else {
+        setter('')
+      }
     }
 
   const exportToExcel = () => {
@@ -161,7 +180,7 @@ export default function Pecas() {
             <Upload className="mr-2 h-4 w-4" /> Importar XML
           </Button>
           <Button onClick={() => handleOpenForm()}>
-            <Plus className="mr-2 h-4 w-4" /> Acrescentar nova peça manualmente
+            <Plus className="mr-2 h-4 w-4" /> Nova Peça
           </Button>
         </div>
       </div>

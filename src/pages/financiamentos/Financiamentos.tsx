@@ -35,7 +35,10 @@ export default function Financiamentos() {
   const filteredFinanciamentos = financiamentos.filter((fin) => {
     const clienteName = getClienteName(fin.clienteId).toLowerCase()
     const motoModel = getMotoModel(fin.motoId).toLowerCase()
-    const idMatch = fin.id.includes(filter)
+    // Support searching by new Contract Number if available, or ID
+    const contractNum = fin.numeroContrato ? fin.numeroContrato.toString() : ''
+    const idMatch = fin.id.includes(filter) || contractNum.includes(filter)
+
     const searchMatch =
       clienteName.includes(filter.toLowerCase()) ||
       motoModel.includes(filter.toLowerCase()) ||
@@ -59,7 +62,7 @@ export default function Financiamentos() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por cliente, moto ou ID..."
+            placeholder="Buscar por cliente, moto ou nº contrato..."
             className="pl-8"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -95,7 +98,7 @@ export default function Financiamentos() {
             {filteredFinanciamentos.map((fin) => (
               <TableRow key={fin.id}>
                 <TableCell className="font-medium">
-                  #{formatContractId(fin.id)}
+                  #{formatContractId(fin.numeroContrato || fin.id)}
                 </TableCell>
                 <TableCell>{getClienteName(fin.clienteId)}</TableCell>
                 <TableCell>{getMotoModel(fin.motoId)}</TableCell>

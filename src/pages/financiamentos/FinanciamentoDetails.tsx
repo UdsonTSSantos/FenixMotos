@@ -136,7 +136,8 @@ export default function FinanciamentoDetails() {
             </Link>
           </Button>
           <h1 className="text-2xl font-bold">
-            Contrato #{formatContractId(financiamento.id)}
+            Contrato #
+            {formatContractId(financiamento.numeroContrato || financiamento.id)}
           </h1>
         </div>
         <div className="flex gap-2">

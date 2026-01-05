@@ -43,7 +43,7 @@ export default function FinanciamentoExtrato() {
       return
     }
 
-    const message = `*EXTRATO FINANCEIRO - ${empresa.nome}*\n\n*Contrato:* #${formatContractId(financiamento.id)}\n*Cliente:* ${cliente?.nome}\n*Veículo:* ${moto?.modelo}\n\n*Status:* ${financiamento.status.toUpperCase()}\n*Valor Financiado:* ${formatCurrency(financiamento.valorFinanciado)}\n*Parcelas:* ${financiamento.quantidadeParcelas}x\n\nAcesse o sistema para ver o extrato completo ou entre em contato para mais detalhes.`
+    const message = `*EXTRATO FINANCEIRO - ${empresa.nome}*\n\n*Contrato:* #${formatContractId(financiamento.numeroContrato || financiamento.id)}\n*Cliente:* ${cliente?.nome}\n*Veículo:* ${moto?.modelo}\n\n*Status:* ${financiamento.status.toUpperCase()}\n*Valor Financiado:* ${formatCurrency(financiamento.valorFinanciado)}\n*Parcelas:* ${financiamento.quantidadeParcelas}x\n\nAcesse o sistema para ver o extrato completo ou entre em contato para mais detalhes.`
 
     const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
     window.open(url, '_blank')
@@ -98,7 +98,10 @@ export default function FinanciamentoExtrato() {
               Emissão: {new Date().toLocaleDateString()}
             </p>
             <p className="text-sm font-bold mt-2">
-              Contrato #{formatContractId(financiamento.id)}
+              Contrato #
+              {formatContractId(
+                financiamento.numeroContrato || financiamento.id,
+              )}
             </p>
           </div>
         </div>

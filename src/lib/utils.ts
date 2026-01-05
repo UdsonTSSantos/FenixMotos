@@ -11,6 +11,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const formatCurrency = (value: number) => {
+  if (isNaN(value)) return 'R$ 0,00'
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
@@ -52,12 +53,19 @@ export const formatCEP = (value: string) => {
 }
 
 export const parseCurrency = (value: string) => {
-  return Number(value.replace(/[^0-9,-]+/g, '').replace(',', '.'))
+  if (!value) return 0
+  const number = Number(value.replace(/[^0-9,-]+/g, '').replace(',', '.'))
+  return isNaN(number) ? 0 : number
 }
 
-export const formatContractId = (id: string) => {
-  if (/^\d+$/.test(id)) {
-    return id.padStart(5, '0')
+export const formatContractId = (id: string | number | undefined) => {
+  if (typeof id === 'number') {
+    return id.toString().padStart(6, '0')
   }
-  return id
+  if (!id) return '000000'
+  // Fallback for UUIDs or old strings
+  if (/^\d+$/.test(id)) {
+    return id.padStart(6, '0')
+  }
+  return id.substring(0, 8).toUpperCase()
 }

@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { parseCurrency, formatCurrency } from '@/lib/utils'
-import { addMonths, parseISO } from 'date-fns'
+import { addDays, parseISO } from 'date-fns'
 import { Textarea } from '@/components/ui/textarea'
 
 const formSchema = z.object({
@@ -44,6 +44,9 @@ const formSchema = z.object({
   taxaFinanciamento: z.coerce.number().min(0).default(0),
   valorParcela: z.string().min(1, 'Valor da parcela obrigatório'),
   observacao: z.string().optional(),
+  dataPrimeiraParcela: z
+    .string()
+    .min(1, 'Data da primeira parcela é obrigatória'),
 })
 
 export default function FinanciamentoForm() {
@@ -69,6 +72,11 @@ export default function FinanciamentoForm() {
   const [selectedMotoId, setSelectedMotoId] = useState<string | null>(null)
   const [isManualParcel, setIsManualParcel] = useState(false)
 
+  // Default first installment is 30 days from now
+  const defaultFirstInstallment = addDays(new Date(), 30)
+    .toISOString()
+    .split('T')[0]
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -81,6 +89,7 @@ export default function FinanciamentoForm() {
       taxaFinanciamento: 0,
       valorParcela: 'R$ 0,00',
       observacao: '',
+      dataPrimeiraParcela: defaultFirstInstallment,
     },
   })
 
@@ -91,6 +100,11 @@ export default function FinanciamentoForm() {
         existingFinanciamento.parcelas.length > 0
           ? existingFinanciamento.parcelas[0].valorOriginal
           : 0
+
+      const firstParcelDate =
+        existingFinanciamento.parcelas.length > 0
+          ? existingFinanciamento.parcelas[0].dataVencimento.split('T')[0]
+          : defaultFirstInstallment
 
       form.reset({
         motoId: existingFinanciamento.motoId,
@@ -104,6 +118,7 @@ export default function FinanciamentoForm() {
         taxaFinanciamento: existingFinanciamento.taxaFinanciamento || 0,
         valorParcela: formatCurrency(parcelValue),
         observacao: existingFinanciamento.observacao || '',
+        dataPrimeiraParcela: firstParcelDate,
       })
     }
   }, [isEditing, existingFinanciamento, form])
@@ -159,22 +174,30 @@ export default function FinanciamentoForm() {
     const total = entrada + parcelaVal * values.quantidadeParcelas
     const financiado = total - entrada
 
-    const today = new Date()
     const contractDate =
       isEditing && existingFinanciamento
         ? existingFinanciamento.dataContrato
-        : today.toISOString()
+        : new Date().toISOString()
+
+    // Auto-generate parcels based on first installment date and 30-day interval
+    const firstDate = parseISO(values.dataPrimeiraParcela)
 
     const newParcelas = Array.from({ length: values.quantidadeParcelas }).map(
-      (_, i) => ({
-        numero: i + 1,
-        dataVencimento: addMonths(parseISO(contractDate), i + 1).toISOString(),
-        valorOriginal: parcelaVal,
-        valorJuros: 0,
-        valorMulta: 0,
-        valorTotal: parcelaVal,
-        status: 'pendente' as const,
-      }),
+      (_, i) => {
+        // First parcel is i=0, date is firstDate
+        // Subsequent parcels are +30 days * i
+        const dueDate = addDays(firstDate, i * 30)
+
+        return {
+          numero: i + 1,
+          dataVencimento: dueDate.toISOString(),
+          valorOriginal: parcelaVal,
+          valorJuros: 0,
+          valorMulta: 0,
+          valorTotal: parcelaVal,
+          status: 'pendente' as const,
+        }
+      },
     )
 
     const commonData = {
@@ -197,7 +220,7 @@ export default function FinanciamentoForm() {
     } else {
       addFinanciamento({
         ...commonData,
-        dataContrato: new Date().toISOString(),
+        dataContrato: contractDate,
       })
       navigate('/financiamentos')
     }
@@ -316,6 +339,22 @@ export default function FinanciamentoForm() {
 
                     <FormField
                       control={form.control}
+                      name="dataPrimeiraParcela"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>1ª Parcela</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
                       name="quantidadeParcelas"
                       render={({ field }) => (
                         <FormItem>
@@ -332,31 +371,6 @@ export default function FinanciamentoForm() {
                               }}
                             />
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="taxaFinanciamento"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Juros Financiamento (%)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.1"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e)
-                                setIsManualParcel(false)
-                              }}
-                            />
-                          </FormControl>
-                          <FormDescription>Acréscimo mensal.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -390,6 +404,28 @@ export default function FinanciamentoForm() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
+                      name="taxaFinanciamento"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Juros Finan. (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e)
+                                setIsManualParcel(false)
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
                       name="taxaJurosAtraso"
                       render={({ field }) => (
                         <FormItem>
@@ -401,27 +437,27 @@ export default function FinanciamentoForm() {
                         </FormItem>
                       )}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="valorMultaAtraso"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Multa Atraso (Fixa)</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              onChange={handleCurrencyChange(
-                                field.value,
-                                'valorMultaAtraso',
-                              )}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="valorMultaAtraso"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Multa Atraso (Fixa)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            onChange={handleCurrencyChange(
+                              field.value,
+                              'valorMultaAtraso',
+                            )}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
@@ -481,6 +517,12 @@ export default function FinanciamentoForm() {
                             parseCurrency(watchValorParcela) *
                               (watchParcelas || 1),
                         )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 text-right">
+                        1ª Parcela em:{' '}
+                        {new Date(
+                          form.getValues('dataPrimeiraParcela'),
+                        ).toLocaleDateString()}
                       </div>
                     </div>
                   </div>

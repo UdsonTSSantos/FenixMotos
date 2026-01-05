@@ -57,6 +57,7 @@ export type FinanciamentoStatus = 'ativo' | 'quitado' | 'inadimplente'
 
 export interface Financiamento {
   id: string
+  numeroContrato?: number
   clienteId: string
   motoId: string
   dataContrato: string // ISO Date
@@ -156,7 +157,7 @@ export interface OrcamentoItem {
   valorUnitario: number
   desconto: number // Percentage 0-100
   valorTotal: number
-  comissaoUnitario: number // Store % for services
+  comissaoUnitario: number // Value in currency per unit
 }
 
 export type WarrantyOption =

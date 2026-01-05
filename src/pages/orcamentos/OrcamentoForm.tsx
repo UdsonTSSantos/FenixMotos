@@ -120,6 +120,7 @@ export default function OrcamentoForm() {
   const isEditing = !!id
   const existing = orcamentos.find((o) => o.id === id)
 
+  // Filter users with sales roles
   const vendedores = usuarios.filter(
     (u) =>
       [
@@ -203,6 +204,9 @@ export default function OrcamentoForm() {
     if (type === 'peca') {
       const p = pecas.find((x) => x.id === id)
       if (p) {
+        // Calculate 3% commission for parts by default
+        const commissionPerUnit = p.precoVenda * 0.03
+
         append({
           id: crypto.randomUUID(),
           tipo: 'peca',
@@ -212,12 +216,15 @@ export default function OrcamentoForm() {
           valorUnitario: p.precoVenda,
           desconto: 0,
           valorTotal: p.precoVenda,
-          comissaoUnitario: 0,
+          comissaoUnitario: commissionPerUnit,
         })
       }
     } else {
       const s = servicos.find((x) => x.id === id)
       if (s) {
+        // Calculate commission for service based on percentage
+        const commissionPerUnit = s.valor * (s.comissao / 100)
+
         append({
           id: crypto.randomUUID(),
           tipo: 'servico',
@@ -227,7 +234,7 @@ export default function OrcamentoForm() {
           valorUnitario: s.valor,
           desconto: 0,
           valorTotal: s.valor,
-          comissaoUnitario: s.comissao,
+          comissaoUnitario: commissionPerUnit,
         })
       }
     }
@@ -245,12 +252,16 @@ export default function OrcamentoForm() {
 
   const totalGeral = totalPecas + totalServicos
 
-  const comissaoPecas = totalPecas * 0.03
-  const comissaoServicos = watchedItens
-    .filter((i) => i.tipo === 'servico')
-    .reduce((acc, i) => acc + i.valorTotal * (i.comissaoUnitario / 100), 0)
-
-  const totalComissao = comissaoPecas + comissaoServicos
+  const totalComissao = watchedItens.reduce((acc, i) => {
+    // If discount is applied, commission might need adjustment?
+    // For now simpler logic: commission is per unit * quantity.
+    // However, if we discount the total, we might want to reduce commission?
+    // Let's assume commission is based on sold value.
+    // Recalculate based on current total value proportion if needed, but per-unit is safer.
+    // Actually, if I discount, I should probably reduce commission proportionally.
+    // Let's stick to unit commission * quantity for now as per requirement.
+    return acc + i.comissaoUnitario * i.quantidade
+  }, 0)
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const dataToSave = {
@@ -319,7 +330,6 @@ export default function OrcamentoForm() {
       return
     }
     const message = getMessageBody(mode === 'quote')
-    // Fix: Using correct whatsapp api url format
     const url = `https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }
@@ -328,7 +338,6 @@ export default function OrcamentoForm() {
     const cliente = form.getValues('clienteNome')
     const message = getMessageBody(true)
     const subject = `Orçamento - ${empresa.nome}`
-    // Basic mailto formatting
     const body = message.replace(/\*/g, '').replace(/\n/g, '%0D%0A')
 
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`
@@ -635,9 +644,6 @@ export default function OrcamentoForm() {
                     }
                   />
                 </div>
-
-                {/* ... existing fields ... */}
-                {/* I am re-rendering the full file to be consistent, but will skip redundant parts if I can just output full file. Yes I must output full file. */}
 
                 <FormField
                   control={form.control}
@@ -1072,15 +1078,6 @@ export default function OrcamentoForm() {
                       </FormItem>
                     )}
                   />
-                  {existing ? (
-                    <div className="text-sm font-bold text-muted-foreground pt-6">
-                      Nº Orçamento: {existing.id.substring(0, 8).toUpperCase()}
-                    </div>
-                  ) : (
-                    <div className="text-sm font-bold text-muted-foreground pt-6">
-                      Nº Orçamento: (Automático)
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex gap-4">
