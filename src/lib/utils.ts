@@ -73,12 +73,16 @@ export const formatContractId = (id: string | number | undefined) => {
 export const formatDate = (dateString: string | undefined | null) => {
   if (!dateString) return '-'
   try {
+    // Handle "YYYY-MM-DD" explicitly to avoid timezone offset issues (treat as local date)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split('-').map(Number)
+      const date = new Date(year, month - 1, day)
+      return date.toLocaleDateString('pt-BR')
+    }
+
+    // Handle ISO strings with time
     const date = new Date(dateString)
     if (isNaN(date.getTime())) return '-'
-    // Using UTC to avoid timezone shifts when displaying stored ISO dates
-    // Assuming dates are stored as ISO strings and we want to display the date part
-    // However, if the app uses local time for creation, standard toLocaleDateString might be better
-    // For consistency with the user story asking for DD/MM/YYYY specifically:
     return date.toLocaleDateString('pt-BR')
   } catch (e) {
     return '-'

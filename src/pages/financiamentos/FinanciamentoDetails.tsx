@@ -185,6 +185,9 @@ export default function FinanciamentoDetails() {
               {moto?.fabricante} - {moto?.ano}
             </p>
             <p className="text-sm text-muted-foreground">{moto?.cor}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Placa: {moto?.placa || '-'}
+            </p>
           </CardContent>
         </Card>
 
@@ -238,7 +241,9 @@ export default function FinanciamentoDetails() {
               {financiamento.parcelas.map((parcela) => (
                 <TableRow key={parcela.numero}>
                   <TableCell>{parcela.numero}</TableCell>
-                  <TableCell>{formatDate(parcela.dataVencimento)}</TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    {formatDate(parcela.dataVencimento)}
+                  </TableCell>
                   <TableCell>{formatCurrency(parcela.valorOriginal)}</TableCell>
                   <TableCell className="text-red-500 font-medium">
                     {parcela.valorJuros + parcela.valorMulta > 0

@@ -66,6 +66,7 @@ export default function FinanciamentoForm() {
   // Wait for data if editing
   const isLoading = isEditing && !existingFinanciamento
 
+  // Filter motos: Show available OR the one currently assigned to this financing (if editing)
   const motosDisponiveis = motos.filter(
     (m) =>
       m.status === 'estoque' ||
@@ -124,11 +125,8 @@ export default function FinanciamentoForm() {
         observacao: existingFinanciamento.observacao || '',
         dataPrimeiraParcela: firstParcelDate,
       })
-      // Ensure we flag manual parcel as false initially to allow recalc unless user edits
-      // Actually, if we are editing, we might want to respect the stored value.
-      // But for consistency with "Edit form must pre-populate", we rely on reset.
     }
-  }, [isEditing, existingFinanciamento, form]) // Removed 'defaultFirstInstallment' to avoid re-trigger
+  }, [isEditing, existingFinanciamento, form])
 
   const selectedMoto = motos.find((m) => m.id === selectedMotoId)
 
@@ -140,9 +138,6 @@ export default function FinanciamentoForm() {
   useEffect(() => {
     if (isManualParcel) return
     if (!selectedMoto) return
-    // Only auto-calc if NOT editing or if user interacts?
-    // User requirement: "Automated Parcel Synchronization".
-    // We should allow calculation.
 
     const entradaValue = parseCurrency(watchEntrada || '0')
     const principal = Math.max(0, selectedMoto.valor - entradaValue)
@@ -154,7 +149,6 @@ export default function FinanciamentoForm() {
     const finalParcel = baseParcel + interestPart
 
     if (!isNaN(finalParcel) && finalParcel !== Infinity) {
-      // Avoid overwriting with 0 if principal is 0 because moto value not loaded yet
       if (selectedMoto.valor > 0) {
         form.setValue('valorParcela', formatCurrency(finalParcel), {
           shouldValidate: true,
@@ -184,16 +178,9 @@ export default function FinanciamentoForm() {
     }
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // If we are editing, we use the moto from the record or selected one
     const moto =
       isEditing && !selectedMoto ? existingFinanciamento : selectedMoto
-    const motoVal = selectedMoto
-      ? selectedMoto.valor
-      : isEditing && existingFinanciamento
-        ? 0
-        : 0
-    // Wait, if moto is sold, it might be in 'motos' list with status 'vendida'.
-    // `selectedMoto` comes from `motos.find`. `motos` contains all motos.
+
     if (!selectedMoto && !isEditing) return
 
     const entrada = parseCurrency(values.valorEntrada)
@@ -206,8 +193,6 @@ export default function FinanciamentoForm() {
         ? existingFinanciamento.dataContrato
         : new Date().toISOString()
 
-    // Date Generation Logic Fix
-    // Ensure we have a valid date string
     const firstDateString = values.dataPrimeiraParcela
     let firstDate: Date
     try {
@@ -220,11 +205,10 @@ export default function FinanciamentoForm() {
 
     const newParcelas = Array.from({ length: values.quantidadeParcelas }).map(
       (_, i) => {
-        // Correctly add 30 days * i
         const dueDate = addDays(firstDate, i * 30)
         return {
           numero: i + 1,
-          dataVencimento: dueDate.toISOString(), // ISO 8601
+          dataVencimento: dueDate.toISOString(),
           valorOriginal: parcelaVal,
           valorJuros: 0,
           valorMulta: 0,
@@ -297,7 +281,7 @@ export default function FinanciamentoForm() {
                     name="motoId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Motocicleta</FormLabel>
+                        <FormLabel>Motocicleta (Em Estoque)</FormLabel>
                         <Select
                           onValueChange={(val) => {
                             field.onChange(val)
@@ -308,13 +292,19 @@ export default function FinanciamentoForm() {
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Selecione a moto" />
+                              <SelectValue placeholder="Selecione a moto disponível" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            {motosDisponiveis.length === 0 && (
+                              <SelectItem value="none" disabled>
+                                Nenhuma moto disponível no momento
+                              </SelectItem>
+                            )}
                             {motosDisponiveis.map((m) => (
                               <SelectItem key={m.id} value={m.id}>
-                                {m.modelo} - {m.cor} ({formatCurrency(m.valor)})
+                                [{m.placa || 'SEM PLACA'}] {m.modelo} -{' '}
+                                {formatCurrency(m.valor)}
                                 {m.status === 'vendida' &&
                                   isEditing &&
                                   ' (Atual)'}

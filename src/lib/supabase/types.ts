@@ -55,21 +55,21 @@ export type Database = {
       }
       clientes: {
         Row: {
-          bairro: string | null
-          cep: string | null
-          cidade: string | null
+          bairro: string
+          cep: string
+          cidade: string
           cnh: string
           cnhValidade: string
-          complemento: string | null
-          cpf: string | null
+          complemento: string
+          cpf: string
           created_at: string
-          dataNascimento: string | null
+          dataNascimento: string
           email: string | null
           endereco: string | null
-          estado: string | null
+          estado: string
           genero: string | null
           id: string
-          nome: string
+          nome: string | null
           prof_cargo: string | null
           prof_cnpj: string | null
           prof_email: string | null
@@ -79,25 +79,25 @@ export type Database = {
           prof_supervisor: string | null
           prof_telefone: string | null
           prof_tempo: string | null
-          rg: string | null
+          rg: string
           telefone: string | null
         }
         Insert: {
-          bairro?: string | null
-          cep?: string | null
-          cidade?: string | null
+          bairro: string
+          cep: string
+          cidade: string
           cnh: string
           cnhValidade: string
-          complemento?: string | null
-          cpf?: string | null
+          complemento: string
+          cpf: string
           created_at?: string
-          dataNascimento?: string | null
+          dataNascimento: string
           email?: string | null
           endereco?: string | null
-          estado?: string | null
+          estado: string
           genero?: string | null
           id?: string
-          nome: string
+          nome?: string | null
           prof_cargo?: string | null
           prof_cnpj?: string | null
           prof_email?: string | null
@@ -107,25 +107,25 @@ export type Database = {
           prof_supervisor?: string | null
           prof_telefone?: string | null
           prof_tempo?: string | null
-          rg?: string | null
+          rg: string
           telefone?: string | null
         }
         Update: {
-          bairro?: string | null
-          cep?: string | null
-          cidade?: string | null
+          bairro?: string
+          cep?: string
+          cidade?: string
           cnh?: string
           cnhValidade?: string
-          complemento?: string | null
-          cpf?: string | null
+          complemento?: string
+          cpf?: string
           created_at?: string
-          dataNascimento?: string | null
+          dataNascimento?: string
           email?: string | null
           endereco?: string | null
-          estado?: string | null
+          estado?: string
           genero?: string | null
           id?: string
-          nome?: string
+          nome?: string | null
           prof_cargo?: string | null
           prof_cnpj?: string | null
           prof_email?: string | null
@@ -135,7 +135,7 @@ export type Database = {
           prof_supervisor?: string | null
           prof_telefone?: string | null
           prof_tempo?: string | null
-          rg?: string | null
+          rg?: string
           telefone?: string | null
         }
         Relationships: []

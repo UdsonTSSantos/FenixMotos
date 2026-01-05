@@ -29,19 +29,26 @@ export default function Financiamentos() {
 
   const getClienteName = (id: string) =>
     clientes.find((c) => c.id === id)?.nome || 'Desconhecido'
-  const getMotoModel = (id: string) =>
-    motos.find((m) => m.id === id)?.modelo || 'Desconhecida'
+
+  // Enhanced to return Plate + Model
+  const getMotoInfo = (id: string) => {
+    const moto = motos.find((m) => m.id === id)
+    if (!moto) return 'Desconhecida'
+    const placa = moto.placa ? `[${moto.placa}]` : '[S/ Placa]'
+    return `${placa} ${moto.modelo}`
+  }
 
   const filteredFinanciamentos = financiamentos.filter((fin) => {
     const clienteName = getClienteName(fin.clienteId).toLowerCase()
-    const motoModel = getMotoModel(fin.motoId).toLowerCase()
+    const motoInfo = getMotoInfo(fin.motoId).toLowerCase()
+
     // Support searching by new Contract Number if available, or ID
     const contractNum = fin.numeroContrato ? fin.numeroContrato.toString() : ''
     const idMatch = fin.id.includes(filter) || contractNum.includes(filter)
 
     const searchMatch =
       clienteName.includes(filter.toLowerCase()) ||
-      motoModel.includes(filter.toLowerCase()) ||
+      motoInfo.includes(filter.toLowerCase()) ||
       idMatch
     const statusMatch = statusFilter === 'all' || fin.status === statusFilter
     return searchMatch && statusMatch
@@ -62,7 +69,7 @@ export default function Financiamentos() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por cliente, moto ou nº contrato..."
+            placeholder="Buscar por cliente, placa ou contrato..."
             className="pl-8"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -101,7 +108,7 @@ export default function Financiamentos() {
                   #{formatContractId(fin.numeroContrato || fin.id)}
                 </TableCell>
                 <TableCell>{getClienteName(fin.clienteId)}</TableCell>
-                <TableCell>{getMotoModel(fin.motoId)}</TableCell>
+                <TableCell>{getMotoInfo(fin.motoId)}</TableCell>
                 <TableCell>{formatDate(fin.dataContrato)}</TableCell>
                 <TableCell>{formatCurrency(fin.valorTotal)}</TableCell>
                 <TableCell>

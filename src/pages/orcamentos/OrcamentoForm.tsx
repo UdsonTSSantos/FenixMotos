@@ -111,6 +111,7 @@ export default function OrcamentoForm() {
     empresa,
     financiamentos,
     motos,
+    currentUser,
   } = useData()
   const [printMode, setPrintMode] = useState<
     'none' | 'quote' | 'service_order'
@@ -151,6 +152,23 @@ export default function OrcamentoForm() {
       status: 'aberto',
     },
   })
+
+  // Auto-assign salesperson for new budgets
+  useEffect(() => {
+    if (!isEditing && currentUser && !form.getValues('vendedorId')) {
+      const isSalesRole = [
+        'Administrador',
+        'Diretor',
+        'Gerente',
+        'Supervisor',
+        'Vendedor',
+      ].includes(currentUser.role)
+
+      if (isSalesRole) {
+        form.setValue('vendedorId', currentUser.id)
+      }
+    }
+  }, [isEditing, currentUser, form])
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -253,13 +271,6 @@ export default function OrcamentoForm() {
   const totalGeral = totalPecas + totalServicos
 
   const totalComissao = watchedItens.reduce((acc, i) => {
-    // If discount is applied, commission might need adjustment?
-    // For now simpler logic: commission is per unit * quantity.
-    // However, if we discount the total, we might want to reduce commission?
-    // Let's assume commission is based on sold value.
-    // Recalculate based on current total value proportion if needed, but per-unit is safer.
-    // Actually, if I discount, I should probably reduce commission proportionally.
-    // Let's stick to unit commission * quantity for now as per requirement.
     return acc + i.comissaoUnitario * i.quantidade
   }, 0)
 
