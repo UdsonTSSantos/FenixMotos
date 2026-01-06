@@ -26,7 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { USER_ROLES } from '@/types'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Upload, X } from 'lucide-react'
+import { Upload, X, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
@@ -101,7 +101,6 @@ export default function UsuarioForm() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validation: Check if it is an image
       if (!file.type.startsWith('image/')) {
         toast({
           title: 'Arquivo inválido',
@@ -117,12 +116,13 @@ export default function UsuarioForm() {
       const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`
       const filePath = `${fileName}`
 
-      const { data, error } = await supabase.storage
-        .from('images')
+      // Upload to 'avatars' bucket
+      const { error } = await supabase.storage
+        .from('avatars')
         .upload(filePath, file)
 
-      setUploading(false)
       if (error) {
+        setUploading(false)
         toast({
           title: 'Erro no upload',
           description: error.message,
@@ -131,16 +131,16 @@ export default function UsuarioForm() {
         return
       }
 
-      if (data) {
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from('images').getPublicUrl(filePath)
-        form.setValue('foto', publicUrl)
-        toast({
-          title: 'Foto carregada',
-          description: 'A imagem foi enviada com sucesso.',
-        })
-      }
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('avatars').getPublicUrl(filePath)
+
+      form.setValue('foto', publicUrl)
+      setUploading(false)
+      toast({
+        title: 'Foto carregada',
+        description: 'A imagem foi enviada com sucesso.',
+      })
     }
   }
 
@@ -170,7 +170,11 @@ export default function UsuarioForm() {
                     className="relative overflow-hidden cursor-pointer"
                     disabled={uploading}
                   >
-                    <Upload className="mr-2 h-4 w-4" />
+                    {uploading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
                     {uploading ? 'Enviando...' : 'Carregar Foto'}
                     <Input
                       type="file"

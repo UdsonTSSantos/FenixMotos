@@ -35,7 +35,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Trash2, Upload } from 'lucide-react'
+import { Plus, Trash2, Upload, Loader2, X } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from '@/hooks/use-toast'
 
 const aquisicaoSchema = z.object({
   id: z.string(),
@@ -64,9 +66,7 @@ export default function MotoForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { motos, addMoto, updateMoto, clientes } = useData()
-  const [imagePreview, setImagePreview] = useState<string | undefined>(
-    undefined,
-  )
+  const [uploading, setUploading] = useState(false)
 
   const isEditing = !!id
   const existingMoto = motos.find((m) => m.id === id)
@@ -110,10 +110,9 @@ export default function MotoForm() {
         dataLicenciamento: existingMoto.dataLicenciamento || '',
         valor: formatCurrency(existingMoto.valor),
         kmAtual: existingMoto.kmAtual || 0,
-        imagem: existingMoto.imagem,
+        imagem: existingMoto.imagem || '',
         historicoAquisicao: formattedHistory,
       })
-      setImagePreview(existingMoto.imagem)
     }
   }, [isEditing, existingMoto, form])
 
@@ -127,7 +126,6 @@ export default function MotoForm() {
     const motoData = {
       ...values,
       valor: rawValue,
-      imagem: imagePreview || values.imagem || '',
       historicoAquisicao: processedHistory,
     }
 
@@ -146,16 +144,50 @@ export default function MotoForm() {
       fieldName.onChange(formatCurrency(number))
     }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const result = reader.result as string
-        setImagePreview(result)
-        form.setValue('imagem', result, { shouldDirty: true })
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Formato inválido',
+        description: 'Por favor envie uma imagem.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      setUploading(true)
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.floor(Math.random() * 1000)}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file)
+
+      if (uploadError) {
+        throw uploadError
       }
-      reader.readAsDataURL(file)
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('images').getPublicUrl(filePath)
+
+      form.setValue('imagem', publicUrl, { shouldDirty: true })
+      toast({
+        title: 'Sucesso',
+        description: 'Imagem enviada com sucesso.',
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Erro no upload',
+        description: error.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -171,6 +203,7 @@ export default function MotoForm() {
   }
 
   const isSold = existingMoto?.status === 'vendida'
+  const currentImage = form.watch('imagem')
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -188,13 +221,26 @@ export default function MotoForm() {
                   <div className="md:col-span-2 space-y-4">
                     <FormLabel>Foto da Motocicleta</FormLabel>
                     <div className="flex items-center gap-4">
-                      <div className="border-2 border-dashed rounded-lg p-2 w-48 h-32 flex items-center justify-center bg-muted/50 overflow-hidden">
-                        {imagePreview ? (
-                          <img
-                            src={imagePreview}
-                            alt="Moto Preview"
-                            className="w-full h-full object-cover rounded-md"
-                          />
+                      <div className="border-2 border-dashed rounded-lg p-2 w-48 h-32 flex items-center justify-center bg-muted/50 overflow-hidden relative">
+                        {currentImage ? (
+                          <>
+                            <img
+                              src={currentImage}
+                              alt="Moto Preview"
+                              className="w-full h-full object-cover rounded-md"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                form.setValue('imagem', '', {
+                                  shouldDirty: true,
+                                })
+                              }
+                              className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 shadow-sm hover:bg-destructive/90"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </>
                         ) : (
                           <span className="text-muted-foreground text-xs text-center flex flex-col items-center gap-1">
                             <Upload className="h-4 w-4" /> Sem Foto
@@ -202,12 +248,31 @@ export default function MotoForm() {
                         )}
                       </div>
                       <div className="space-y-2 flex-1">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          className="w-full max-w-sm"
-                          onChange={handleImageUpload}
-                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={uploading}
+                          className="w-full max-w-sm relative overflow-hidden"
+                        >
+                          {uploading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Enviando...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Carregar Foto
+                            </>
+                          )}
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 opacity-0 cursor-pointer h-full w-full"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
+                          />
+                        </Button>
                         <FormDescription>
                           Envie uma foto do veículo (JPG, PNG).
                         </FormDescription>
@@ -446,7 +511,6 @@ export default function MotoForm() {
                                         {cliente.nome}
                                       </SelectItem>
                                     ))}
-                                    {/* Fallback for old records */}
                                     {field.value &&
                                       !clientes.some(
                                         (c) => c.nome === field.value,

@@ -22,7 +22,9 @@ import {
   CardDescription,
 } from '@/components/ui/card'
 import { formatCNPJ, formatPhone } from '@/lib/utils'
-import { Instagram, Facebook, Twitter, Video } from 'lucide-react'
+import { Instagram, Facebook, Twitter, Video, Loader2 } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
+import { toast } from '@/hooks/use-toast'
 
 const formSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
@@ -43,6 +45,7 @@ const formSchema = z.object({
 export default function Empresa() {
   const { empresa, updateEmpresa } = useData()
   const [logoPreview, setLogoPreview] = useState<string | undefined>(undefined)
+  const [uploading, setUploading] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,26 +89,58 @@ export default function Empresa() {
     })
   }
 
-  // Mask handlers
   const handleCNPJ = (e: React.ChangeEvent<HTMLInputElement>) => {
     form.setValue('cnpj', formatCNPJ(e.target.value))
   }
+
   const handlePhone =
     (field: 'telefone' | 'telefone2' | 'telefone3') =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       form.setValue(field, formatPhone(e.target.value))
     }
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const result = reader.result as string
-        setLogoPreview(result)
-        form.setValue('logo', result, { shouldDirty: true })
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: 'Formato inválido',
+          description: 'Por favor envie uma imagem.',
+          variant: 'destructive',
+        })
+        return
       }
-      reader.readAsDataURL(file)
+
+      setUploading(true)
+      const fileExt = file.name.split('.').pop()
+      const fileName = `company-logo-${Date.now()}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { error } = await supabase.storage
+        .from('images')
+        .upload(filePath, file)
+
+      if (error) {
+        setUploading(false)
+        toast({
+          title: 'Erro no upload',
+          description: error.message,
+          variant: 'destructive',
+        })
+        return
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('images').getPublicUrl(filePath)
+
+      setLogoPreview(publicUrl)
+      form.setValue('logo', publicUrl, { shouldDirty: true })
+      setUploading(false)
+      toast({
+        title: 'Sucesso',
+        description: 'Logo enviado com sucesso.',
+      })
     }
   }
 
@@ -141,12 +176,24 @@ export default function Empresa() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="w-full max-w-sm"
-                        onChange={handleLogoUpload}
-                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploading}
+                        className="relative overflow-hidden w-full max-w-sm"
+                      >
+                        {uploading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        {uploading ? 'Enviando...' : 'Carregar Logo'}
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          onChange={handleLogoUpload}
+                          disabled={uploading}
+                        />
+                      </Button>
                       <FormDescription>
                         Envie uma imagem (JPG, PNG) para usar como logo.
                       </FormDescription>

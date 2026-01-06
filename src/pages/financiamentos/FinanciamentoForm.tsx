@@ -63,10 +63,8 @@ export default function FinanciamentoForm() {
   const isEditing = !!id
   const existingFinanciamento = financiamentos.find((f) => f.id === id)
 
-  // Wait for data if editing
   const isLoading = isEditing && !existingFinanciamento
 
-  // Filter motos: Show available OR the one currently assigned to this financing (if editing)
   const motosDisponiveis = motos.filter(
     (m) =>
       m.status === 'estoque' ||
@@ -76,7 +74,6 @@ export default function FinanciamentoForm() {
   const [selectedMotoId, setSelectedMotoId] = useState<string | null>(null)
   const [isManualParcel, setIsManualParcel] = useState(false)
 
-  // Default first installment is 30 days from now
   const defaultFirstInstallment = addDays(new Date(), 30)
     .toISOString()
     .split('T')[0]
