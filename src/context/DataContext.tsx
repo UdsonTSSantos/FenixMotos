@@ -67,9 +67,12 @@ interface DataContextType {
   updateServico: (id: string, servico: Partial<Servico>) => void
   deleteServico: (id: string) => void
 
-  addOrcamento: (orcamento: Omit<Orcamento, 'id'>) => void
-  updateOrcamento: (id: string, orcamento: Partial<Orcamento>) => void
-  deleteOrcamento: (id: string) => void
+  addOrcamento: (orcamento: Omit<Orcamento, 'id'>) => Promise<boolean>
+  updateOrcamento: (
+    id: string,
+    orcamento: Partial<Orcamento>,
+  ) => Promise<boolean>
+  deleteOrcamento: (id: string) => Promise<boolean>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -307,15 +310,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await supabase.from('financiamentos').update(dbData).eq('id', id)
     }
 
-    // Handle parcels update
-    // Strategy: If new parcels are provided, we replace the existing ones to ensure consistency with the new terms.
-    // This wipes payment history if contract is re-generated, which is expected behavior when editing contract terms (renegotiation).
-    // If we wanted to keep history, we would need complex merging logic, but for "Edit Contract" that changes values/dates, replacement is safer to avoid inconsistencies.
     if (data.parcelas && data.parcelas.length > 0) {
-      // 1. Delete existing parcels
       await supabase.from('parcelas').delete().eq('financiamento_id', id)
-
-      // 2. Insert new parcels
       const parcelasDb = data.parcelas.map((p) => ({
         financiamento_id: id,
         numero: p.numero,
@@ -327,7 +323,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         status: p.status,
         data_pagamento: p.dataPagamento,
       }))
-
       await supabase.from('parcelas').insert(parcelasDb)
     }
 
@@ -422,9 +417,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const updateUsuario = async (id: string, data: Partial<Usuario>) => {
     const { senha, ...updateData } = data as any
-    // Note: Password update is not handled here directly, would require separate auth api call if needed.
-    // For now, updating profile fields.
-
     await supabase.from('profiles').update(updateData).eq('id', id)
     fetchAllData()
     toast({
@@ -502,89 +494,177 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Orcamentos
   const addOrcamento = async (data: Omit<Orcamento, 'id'>) => {
-    const { itens, ...orcData } = data
-    const dbOrc = {
-      cliente_id: orcData.clienteId === 'new' ? null : orcData.clienteId,
-      cliente_nome: orcData.clienteNome,
-      cliente_telefone: orcData.clienteTelefone,
-      moto_placa: orcData.motoPlaca,
-      moto_modelo: orcData.motoModelo,
-      moto_ano: orcData.motoAno,
-      vendedor_id: orcData.vendedorId,
-      data: orcData.data,
-      garantia_pecas: orcData.garantiaPecas,
-      garantia_servicos: orcData.garantiaServicos,
-      forma_pagamento: orcData.formaPagamento,
-      valor_total_pecas: orcData.valorTotalPecas,
-      valor_total_servicos: orcData.valorTotalServicos,
-      valor_total: orcData.valorTotal,
-      comissao_vendedor: orcData.comissaoVendedor,
-      status: orcData.status,
-      observacao: orcData.observacao,
-    }
+    try {
+      const { itens, ...orcData } = data
+      const dbOrc = {
+        cliente_id: orcData.clienteId === 'new' ? null : orcData.clienteId,
+        cliente_nome: orcData.clienteNome,
+        cliente_telefone: orcData.clienteTelefone,
+        moto_placa: orcData.motoPlaca,
+        moto_modelo: orcData.motoModelo,
+        moto_ano: orcData.motoAno,
+        vendedor_id: orcData.vendedorId,
+        data: orcData.data,
+        garantia_pecas: orcData.garantiaPecas,
+        garantia_servicos: orcData.garantiaServicos,
+        forma_pagamento: orcData.formaPagamento,
+        valor_total_pecas: orcData.valorTotalPecas,
+        valor_total_servicos: orcData.valorTotalServicos,
+        valor_total: orcData.valorTotal,
+        comissao_vendedor: orcData.comissaoVendedor,
+        status: orcData.status,
+        observacao: orcData.observacao,
+      }
 
-    const { data: newOrc, error } = await supabase
-      .from('orcamentos')
-      .insert(dbOrc)
-      .select()
-      .single()
-    if (error) {
+      // Step 1: Insert Budget Header
+      const { data: newOrc, error: headerError } = await supabase
+        .from('orcamentos')
+        .insert(dbOrc)
+        .select()
+        .single()
+
+      if (headerError) {
+        throw new Error(headerError.message)
+      }
+
+      // Step 2: Insert Items
+      if (itens && itens.length > 0) {
+        const itensDb = itens.map((i) => ({
+          orcamento_id: newOrc.id,
+          tipo: i.tipo,
+          referencia_id: i.referenciaId,
+          nome: i.nome,
+          quantidade: i.quantidade,
+          valor_unitario: i.valorUnitario,
+          desconto: i.desconto,
+          valor_total: i.valorTotal,
+          comissao_unitario: i.comissaoUnitario,
+        }))
+
+        const { error: itemsError } = await supabase
+          .from('orcamento_itens')
+          .insert(itensDb)
+
+        if (itemsError) {
+          // Rollback: Delete the created budget if items fail
+          await supabase.from('orcamentos').delete().eq('id', newOrc.id)
+          throw new Error(`Erro ao salvar itens: ${itemsError.message}`)
+        }
+      }
+
+      await fetchAllData()
+      toast({ title: 'Sucesso', description: 'Orçamento criado com sucesso.' })
+      return true
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao criar orçamento.',
+        variant: 'destructive',
+      })
+      return false
+    }
+  }
+
+  const updateOrcamento = async (id: string, data: Partial<Orcamento>) => {
+    try {
+      const { itens, ...orcData } = data
+      const dbData: any = {}
+
+      // Update only provided fields
+      if (orcData.status) dbData.status = orcData.status
+      if (orcData.clienteId !== undefined)
+        dbData.cliente_id =
+          orcData.clienteId === 'new' ? null : orcData.clienteId
+      if (orcData.clienteNome) dbData.cliente_nome = orcData.clienteNome
+      if (orcData.clienteTelefone)
+        dbData.cliente_telefone = orcData.clienteTelefone
+      if (orcData.motoPlaca) dbData.moto_placa = orcData.motoPlaca
+      if (orcData.motoModelo) dbData.moto_modelo = orcData.motoModelo
+      if (orcData.motoAno) dbData.moto_ano = orcData.motoAno
+      if (orcData.vendedorId) dbData.vendedor_id = orcData.vendedorId
+      if (orcData.data) dbData.data = orcData.data
+      if (orcData.garantiaPecas) dbData.garantia_pecas = orcData.garantiaPecas
+      if (orcData.garantiaServicos)
+        dbData.garantia_servicos = orcData.garantiaServicos
+      if (orcData.formaPagamento)
+        dbData.forma_pagamento = orcData.formaPagamento
+      if (orcData.valorTotalPecas !== undefined)
+        dbData.valor_total_pecas = orcData.valorTotalPecas
+      if (orcData.valorTotalServicos !== undefined)
+        dbData.valor_total_servicos = orcData.valorTotalServicos
+      if (orcData.valorTotal !== undefined)
+        dbData.valor_total = orcData.valorTotal
+      if (orcData.comissaoVendedor !== undefined)
+        dbData.comissao_vendedor = orcData.comissaoVendedor
+      if (orcData.observacao) dbData.observacao = orcData.observacao
+
+      if (Object.keys(dbData).length > 0) {
+        const { error } = await supabase
+          .from('orcamentos')
+          .update(dbData)
+          .eq('id', id)
+        if (error) throw error
+      }
+
+      // Handle items update: Strategy is Delete All -> Insert New
+      if (itens) {
+        // 1. Delete existing items
+        const { error: deleteError } = await supabase
+          .from('orcamento_itens')
+          .delete()
+          .eq('orcamento_id', id)
+
+        if (deleteError) throw deleteError
+
+        // 2. Insert new items
+        if (itens.length > 0) {
+          const itensDb = itens.map((i) => ({
+            orcamento_id: id,
+            tipo: i.tipo,
+            referencia_id: i.referenciaId,
+            nome: i.nome,
+            quantidade: i.quantidade,
+            valor_unitario: i.valorUnitario,
+            desconto: i.desconto,
+            valor_total: i.valorTotal,
+            comissao_unitario: i.comissaoUnitario,
+          }))
+
+          const { error: insertError } = await supabase
+            .from('orcamento_itens')
+            .insert(itensDb)
+          if (insertError) throw insertError
+        }
+      }
+
+      await fetchAllData()
+      toast({ title: 'Sucesso', description: 'Orçamento atualizado.' })
+      return true
+    } catch (error: any) {
+      toast({
+        title: 'Erro',
+        description: error.message || 'Erro ao atualizar orçamento.',
+        variant: 'destructive',
+      })
+      return false
+    }
+  }
+
+  const deleteOrcamento = async (id: string) => {
+    try {
+      const { error } = await supabase.from('orcamentos').delete().eq('id', id)
+      if (error) throw error
+      await fetchAllData()
+      toast({ title: 'Sucesso', description: 'Orçamento removido.' })
+      return true
+    } catch (error: any) {
       toast({
         title: 'Erro',
         description: error.message,
         variant: 'destructive',
       })
-      return
+      return false
     }
-
-    const itensDb = itens.map((i) => ({
-      orcamento_id: newOrc.id,
-      tipo: i.tipo,
-      referencia_id: i.referenciaId,
-      nome: i.nome,
-      quantidade: i.quantidade,
-      valor_unitario: i.valorUnitario,
-      desconto: i.desconto,
-      valor_total: i.valorTotal,
-      comissao_unitario: i.comissaoUnitario,
-    }))
-
-    await supabase.from('orcamento_itens').insert(itensDb)
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Orçamento criado.' })
-  }
-
-  const updateOrcamento = async (id: string, data: Partial<Orcamento>) => {
-    const { itens, ...orcData } = data
-    const dbData: any = {}
-    if (orcData.status) dbData.status = orcData.status
-
-    await supabase.from('orcamentos').update(dbData).eq('id', id)
-
-    if (itens) {
-      await supabase.from('orcamento_itens').delete().eq('orcamento_id', id)
-      const itensDb = itens.map((i) => ({
-        orcamento_id: id,
-        tipo: i.tipo,
-        referencia_id: i.referenciaId,
-        nome: i.nome,
-        quantidade: i.quantidade,
-        valor_unitario: i.valorUnitario,
-        desconto: i.desconto,
-        valor_total: i.valorTotal,
-        comissao_unitario: i.comissaoUnitario,
-      }))
-      await supabase.from('orcamento_itens').insert(itensDb)
-    }
-
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Orçamento atualizado.' })
-  }
-
-  const deleteOrcamento = async (id: string) => {
-    await supabase.from('orcamentos').delete().eq('id', id)
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Orçamento removido.' })
   }
 
   return (

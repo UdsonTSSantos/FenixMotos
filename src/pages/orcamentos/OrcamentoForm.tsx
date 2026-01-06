@@ -33,6 +33,7 @@ import {
   Wrench,
   MessageCircle,
   Mail,
+  Loader2,
 } from 'lucide-react'
 import {
   Table,
@@ -117,6 +118,7 @@ export default function OrcamentoForm() {
     'none' | 'quote' | 'service_order'
   >('none')
   const [openClientSearch, setOpenClientSearch] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const isEditing = !!id
   const existing = orcamentos.find((o) => o.id === id)
@@ -274,7 +276,8 @@ export default function OrcamentoForm() {
     return acc + i.comissaoUnitario * i.quantidade
   }, 0)
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSaving(true)
     const dataToSave = {
       ...values,
       valorTotalPecas: totalPecas,
@@ -283,12 +286,16 @@ export default function OrcamentoForm() {
       comissaoVendedor: totalComissao,
     }
 
+    let success = false
     if (isEditing && id) {
-      updateOrcamento(id, dataToSave)
+      success = await updateOrcamento(id, dataToSave)
     } else {
-      addOrcamento(dataToSave)
+      success = await addOrcamento(dataToSave)
     }
-    navigate('/orcamentos')
+    setIsSaving(false)
+    if (success) {
+      navigate('/orcamentos')
+    }
   }
 
   const handlePrint = (mode: 'quote' | 'service_order') => {
@@ -1099,7 +1106,12 @@ export default function OrcamentoForm() {
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit">Salvar Orçamento</Button>
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Salvar Orçamento
+                  </Button>
                 </div>
               </div>
             </form>
