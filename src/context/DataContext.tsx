@@ -78,7 +78,7 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined)
 
 const DEFAULT_EMPRESA: Empresa = {
-  nome: 'Fenix Moto',
+  nome: 'Fenix Motos',
   cnpj: '',
   endereco: '',
   telefone: '',
@@ -516,7 +516,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         observacao: orcData.observacao,
       }
 
-      // Step 1: Insert Budget Header
       const { data: newOrc, error: headerError } = await supabase
         .from('orcamentos')
         .insert(dbOrc)
@@ -527,7 +526,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         throw new Error(headerError.message)
       }
 
-      // Step 2: Insert Items
       if (itens && itens.length > 0) {
         const itensDb = itens.map((i) => ({
           orcamento_id: newOrc.id,
@@ -546,7 +544,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
           .insert(itensDb)
 
         if (itemsError) {
-          // Rollback: Delete the created budget if items fail
           await supabase.from('orcamentos').delete().eq('id', newOrc.id)
           throw new Error(`Erro ao salvar itens: ${itemsError.message}`)
         }
@@ -570,7 +567,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const { itens, ...orcData } = data
       const dbData: any = {}
 
-      // Update only provided fields
       if (orcData.status) dbData.status = orcData.status
       if (orcData.clienteId !== undefined)
         dbData.cliente_id =
@@ -606,9 +602,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (error) throw error
       }
 
-      // Handle items update: Strategy is Delete All -> Insert New
       if (itens) {
-        // 1. Delete existing items
         const { error: deleteError } = await supabase
           .from('orcamento_itens')
           .delete()
@@ -616,7 +610,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         if (deleteError) throw deleteError
 
-        // 2. Insert new items
         if (itens.length > 0) {
           const itensDb = itens.map((i) => ({
             orcamento_id: id,
