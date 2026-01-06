@@ -34,38 +34,41 @@ interface DataContextType {
   login: (email: string, pass: string) => Promise<boolean>
   logout: () => void
 
-  addMoto: (moto: Omit<Moto, 'id' | 'status'>) => void
-  updateMoto: (id: string, moto: Partial<Moto>) => void
-  deleteMoto: (id: string) => void
-  addCliente: (cliente: Omit<Cliente, 'id'>) => void
-  updateCliente: (id: string, cliente: Partial<Cliente>) => void
+  addMoto: (moto: Omit<Moto, 'id' | 'status'>) => Promise<void>
+  updateMoto: (id: string, moto: Partial<Moto>) => Promise<void>
+  deleteMoto: (id: string) => Promise<void>
+  addCliente: (cliente: Omit<Cliente, 'id'>) => Promise<void>
+  updateCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>
   addFinanciamento: (
     financiamento: Omit<Financiamento, 'id' | 'status' | 'parcelas'> & {
       parcelas: any[]
     },
-  ) => void
-  updateFinanciamento: (id: string, data: Partial<Financiamento>) => void
+  ) => Promise<void>
+  updateFinanciamento: (
+    id: string,
+    data: Partial<Financiamento>,
+  ) => Promise<void>
   registerPayment: (
     financiamentoId: string,
     parcelaNumero: number,
     dataPagamento: string,
     valorPago: number,
-  ) => void
+  ) => Promise<void>
   refreshPenalties: () => void
-  updateEmpresa: (data: Empresa) => void
+  updateEmpresa: (data: Empresa) => Promise<void>
 
   addUsuario: (user: Omit<Usuario, 'id'>) => Promise<boolean>
-  updateUsuario: (id: string, user: Partial<Usuario>) => void
-  deleteUsuario: (id: string) => void
+  updateUsuario: (id: string, user: Partial<Usuario>) => Promise<void>
+  deleteUsuario: (id: string) => Promise<void>
 
-  addPeca: (peca: Omit<Peca, 'id'>) => void
-  updatePeca: (id: string, peca: Partial<Peca>) => void
-  deletePeca: (id: string) => void
+  addPeca: (peca: Omit<Peca, 'id'>) => Promise<void>
+  updatePeca: (id: string, peca: Partial<Peca>) => Promise<void>
+  deletePeca: (id: string) => Promise<void>
   importPecasXML: (xmlContent: string) => void
 
-  addServico: (servico: Omit<Servico, 'id'>) => void
-  updateServico: (id: string, servico: Partial<Servico>) => void
-  deleteServico: (id: string) => void
+  addServico: (servico: Omit<Servico, 'id'>) => Promise<void>
+  updateServico: (id: string, servico: Partial<Servico>) => Promise<void>
+  deleteServico: (id: string) => Promise<void>
 
   addOrcamento: (orcamento: Omit<Orcamento, 'id'>) => Promise<boolean>
   updateOrcamento: (
@@ -115,24 +118,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .from('empresa')
       .select('*')
       .single()
-    if (empData) setEmpresa(empData)
+    if (empData) setEmpresa(empData as unknown as Empresa)
 
     // Fetch Lists
-    const { data: motosData } = await supabase
-      .from('motos')
-      .select(`*, historicoAquisicao:aquisicoes_moto(*)`)
-    if (motosData) setMotos(motosData)
+    // Removed historicoAquisicao join as it's no longer used
+    const { data: motosData } = await supabase.from('motos').select(`*`)
+    if (motosData) setMotos(motosData as unknown as Moto[])
 
     const { data: clientesData } = await supabase.from('clientes').select('*')
-    if (clientesData) setClientes(clientesData)
+    if (clientesData) setClientes(clientesData as unknown as Cliente[])
 
     const { data: financs } = await supabase
       .from('financiamentos')
       .select(`*, parcelas(*)`)
-    if (financs) setFinanciamentos(financs)
+    if (financs) setFinanciamentos(financs as unknown as Financiamento[])
 
     const { data: users } = await supabase.from('profiles').select('*')
-    if (users) setUsuarios(users)
+    if (users) setUsuarios(users as unknown as Usuario[])
 
     const { data: pecasData } = await supabase.from('pecas').select('*')
     if (pecasData) setPecas(pecasData)
@@ -143,7 +145,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const { data: orcs } = await supabase
       .from('orcamentos')
       .select(`*, itens:orcamento_itens(*)`)
-    if (orcs) setOrcamentos(orcs)
+    if (orcs) setOrcamentos(orcs as unknown as Orcamento[])
   }
 
   useEffect(() => {
@@ -163,36 +165,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Motos
   const addMoto = async (motoData: Omit<Moto, 'id' | 'status'>) => {
-    const { historicoAquisicao, ...moto } = motoData
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('motos')
-      .insert({ ...moto, status: 'estoque' })
+      .insert({ ...motoData, status: 'estoque' })
       .select()
       .single()
+
     if (error) {
       toast({
         title: 'Erro',
         description: error.message,
         variant: 'destructive',
       })
-      return
+      throw error
     }
-    if (historicoAquisicao && historicoAquisicao.length > 0) {
-      const aquisicoes = historicoAquisicao.map((h) => ({
-        ...h,
-        moto_id: data.id,
-      }))
-      await supabase.from('aquisicoes_moto').insert(aquisicoes)
-    }
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Moto adicionada!' })
+
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Moto adicionada com sucesso!' })
   }
 
   const updateMoto = async (id: string, data: Partial<Moto>) => {
-    const { historicoAquisicao, ...fields } = data
-    await supabase.from('motos').update(fields).eq('id', id)
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Moto atualizada.' })
+    const { error } = await supabase.from('motos').update(data).eq('id', id)
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Moto atualizada com sucesso.' })
   }
 
   const deleteMoto = async (id: string) => {
@@ -205,8 +210,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       })
       return
     }
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Moto removida.' })
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Moto removida com sucesso.' })
   }
 
   // Clientes
@@ -218,16 +223,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: 'destructive',
       })
-      return
+      throw error
     }
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Cliente cadastrado!' })
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Cliente cadastrado com sucesso!' })
   }
 
   const updateCliente = async (id: string, data: Partial<Cliente>) => {
-    await supabase.from('clientes').update(data).eq('id', id)
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Cliente atualizado.' })
+    const { error } = await supabase.from('clientes').update(data).eq('id', id)
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Cliente atualizado com sucesso.' })
   }
 
   // Financiamentos
@@ -258,7 +272,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: 'destructive',
       })
-      return
+      throw error
     }
 
     const parcelasDb = parcelas.map((p: Parcela) => ({
@@ -278,8 +292,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .update({ status: 'vendida' })
       .eq('id', fin.moto_id)
 
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Financiamento criado.' })
+    await fetchAllData()
+    toast({
+      title: 'Sucesso',
+      description: 'Financiamento criado com sucesso.',
+    })
   }
 
   const updateFinanciamento = async (
@@ -307,7 +324,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (data.dataContrato) dbData.data_contrato = data.dataContrato
 
     if (Object.keys(dbData).length > 0) {
-      await supabase.from('financiamentos').update(dbData).eq('id', id)
+      const { error } = await supabase
+        .from('financiamentos')
+        .update(dbData)
+        .eq('id', id)
+      if (error) {
+        toast({
+          title: 'Erro',
+          description: error.message,
+          variant: 'destructive',
+        })
+        throw error
+      }
     }
 
     if (data.parcelas && data.parcelas.length > 0) {
@@ -326,7 +354,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await supabase.from('parcelas').insert(parcelasDb)
     }
 
-    fetchAllData()
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Financiamento atualizado.' })
   }
 
@@ -336,7 +364,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     dataPgto: string,
     valorPago: number,
   ) => {
-    await supabase
+    const { error } = await supabase
       .from('parcelas')
       .update({
         status: 'paga',
@@ -344,6 +372,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         valor_total: valorPago,
       })
       .match({ financiamento_id: finId, numero: pNum })
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
 
     const { data: parcels } = await supabase
       .from('parcelas')
@@ -356,8 +393,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         .eq('id', finId)
     }
 
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Pagamento registrado.' })
+    await fetchAllData()
+    toast({
+      title: 'Sucesso',
+      description: 'Pagamento registrado com sucesso.',
+    })
   }
 
   const refreshPenalties = () => {
@@ -365,16 +405,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const updateEmpresa = async (data: Empresa) => {
-    if (empresa.id) {
-      await supabase
+    let error = null
+    if ((empresa as any).id) {
+      const { error: updateError } = await supabase
         .from('empresa')
         .update(data)
         .eq('id', (empresa as any).id)
+      error = updateError
     } else {
-      await supabase.from('empresa').insert(data)
+      const { error: insertError } = await supabase.from('empresa').insert(data)
+      error = insertError
     }
-    fetchAllData()
-    toast({ title: 'Sucesso', description: 'Empresa atualizada.' })
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Empresa atualizada com sucesso.' })
   }
 
   // Usuarios / Colaboradores
@@ -417,8 +470,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const updateUsuario = async (id: string, data: Partial<Usuario>) => {
     const { senha, ...updateData } = data as any
-    await supabase.from('profiles').update(updateData).eq('id', id)
-    fetchAllData()
+    const { error } = await supabase
+      .from('profiles')
+      .update(updateData)
+      .eq('id', id)
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+
+    await fetchAllData()
     toast({
       title: 'Sucesso',
       description: 'Dados do colaborador atualizados.',
@@ -426,8 +492,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   const deleteUsuario = async (id: string) => {
-    await supabase.from('profiles').update({ ativo: false }).eq('id', id)
-    fetchAllData()
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ativo: false })
+      .eq('id', id)
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Colaborador desativado.' })
   }
 
@@ -441,8 +519,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       preco_custo: data.precoCusto,
       preco_venda: data.precoVenda,
     }
-    await supabase.from('pecas').insert(dbData)
-    fetchAllData()
+    const { error } = await supabase.from('pecas').insert(dbData)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Peça adicionada.' })
   }
 
@@ -455,14 +541,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (data.precoCusto) dbData.preco_custo = data.precoCusto
     if (data.precoVenda) dbData.preco_venda = data.precoVenda
 
-    await supabase.from('pecas').update(dbData).eq('id', id)
-    fetchAllData()
+    const { error } = await supabase.from('pecas').update(dbData).eq('id', id)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Peça atualizada.' })
   }
 
   const deletePeca = async (id: string) => {
-    await supabase.from('pecas').delete().eq('id', id)
-    fetchAllData()
+    const { error } = await supabase.from('pecas').delete().eq('id', id)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Peça removida.' })
   }
 
@@ -475,20 +577,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Servicos
   const addServico = async (data: Omit<Servico, 'id'>) => {
-    await supabase.from('servicos').insert(data)
-    fetchAllData()
+    const { error } = await supabase.from('servicos').insert(data)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Serviço adicionado.' })
   }
 
   const updateServico = async (id: string, data: Partial<Servico>) => {
-    await supabase.from('servicos').update(data).eq('id', id)
-    fetchAllData()
+    const { error } = await supabase.from('servicos').update(data).eq('id', id)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Serviço atualizado.' })
   }
 
   const deleteServico = async (id: string) => {
-    await supabase.from('servicos').delete().eq('id', id)
-    fetchAllData()
+    const { error } = await supabase.from('servicos').delete().eq('id', id)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+    await fetchAllData()
     toast({ title: 'Sucesso', description: 'Serviço removido.' })
   }
 
@@ -558,7 +684,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         description: error.message || 'Erro ao criar orçamento.',
         variant: 'destructive',
       })
-      return false
+      throw error
     }
   }
 
@@ -639,7 +765,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         description: error.message || 'Erro ao atualizar orçamento.',
         variant: 'destructive',
       })
-      return false
+      throw error
     }
   }
 
@@ -656,7 +782,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: 'destructive',
       })
-      return false
+      throw error
     }
   }
 

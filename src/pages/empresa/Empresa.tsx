@@ -22,7 +22,7 @@ import {
   CardDescription,
 } from '@/components/ui/card'
 import { formatCNPJ, formatPhone } from '@/lib/utils'
-import { Instagram, Facebook, Twitter, Video, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
@@ -35,10 +35,6 @@ const formSchema = z.object({
   telefone3: z.string().optional(),
   email: z.string().email('Email inválido'),
   logo: z.string().optional(),
-  instagram: z.string().optional(),
-  facebook: z.string().optional(),
-  x: z.string().optional(),
-  tiktok: z.string().optional(),
   website: z.string().optional(),
 })
 
@@ -58,10 +54,6 @@ export default function Empresa() {
       telefone3: '',
       email: '',
       logo: '',
-      instagram: '',
-      facebook: '',
-      x: '',
-      tiktok: '',
       website: '',
     },
   })
@@ -72,21 +64,24 @@ export default function Empresa() {
         ...empresa,
         telefone2: empresa.telefone2 || '',
         telefone3: empresa.telefone3 || '',
-        instagram: empresa.instagram || '',
-        facebook: empresa.facebook || '',
-        x: empresa.x || '',
-        tiktok: empresa.tiktok || '',
         website: empresa.website || '',
+        logo: empresa.logo || '',
       })
-      setLogoPreview(empresa.logo)
+      if (empresa.logo) {
+        setLogoPreview(empresa.logo)
+      }
     }
   }, [empresa, form])
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    updateEmpresa({
-      ...values,
-      logo: logoPreview || values.logo || '',
-    })
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      await updateEmpresa({
+        ...values,
+        logo: logoPreview || values.logo || '',
+      })
+    } catch (error) {
+      // Handled in context
+    }
   }
 
   const handleCNPJ = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,8 +145,7 @@ export default function Empresa() {
         <CardHeader>
           <CardTitle>Identidade Corporativa</CardTitle>
           <CardDescription>
-            Gerencie as informações da sua concessionária, branding e redes
-            sociais.
+            Gerencie as informações da sua concessionária.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -325,100 +319,31 @@ export default function Empresa() {
                   )}
                 />
 
-                <div className="md:col-span-2 border-t pt-4 mt-4">
-                  <h3 className="text-lg font-medium mb-4">Redes Sociais</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="website"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Website</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="https://www.suaempresa.com.br"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="instagram"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <Instagram className="h-4 w-4" /> Instagram
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="https://instagram.com/..."
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="facebook"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <Facebook className="h-4 w-4" /> Facebook
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="https://facebook.com/..."
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="x"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <Twitter className="h-4 w-4" /> X (Twitter)
-                          </FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="https://x.com/..." />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="tiktok"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <Video className="h-4 w-4" /> TikTok
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="https://tiktok.com/..."
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Website</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          placeholder="https://www.suaempresa.com.br"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <div className="flex justify-end gap-4">
-                <Button type="submit">Salvar Alterações</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Salvar Alterações
+                </Button>
               </div>
             </form>
           </Form>

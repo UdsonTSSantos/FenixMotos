@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -25,28 +25,9 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { parseCurrency, formatCurrency } from '@/lib/utils'
-import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { Plus, Trash2, Upload, Loader2, X } from 'lucide-react'
+import { Upload, Loader2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
-
-const aquisicaoSchema = z.object({
-  id: z.string(),
-  data: z.string().min(1, 'Data é obrigatória'),
-  valor: z.string().min(1, 'Valor é obrigatório'),
-  vendedor: z.string().min(1, 'Selecione um cliente como vendedor'),
-  km: z.coerce.number().min(0, 'KM não pode ser negativo'),
-  consignacao: z.boolean().default(false),
-})
 
 const formSchema = z.object({
   fabricante: z.string().min(1, 'Selecione um fabricante'),
@@ -54,18 +35,21 @@ const formSchema = z.object({
   ano: z.coerce.number().min(1900).max(2100),
   cor: z.string().min(3, 'Cor é obrigatória'),
   placa: z.string().optional(),
+  renavam: z
+    .string()
+    .max(11, 'Renavam deve ter no máximo 11 dígitos')
+    .optional(),
   chassis: z.string().optional(),
   dataLicenciamento: z.string().optional(),
   valor: z.string().min(1, 'Valor é obrigatório'),
   kmAtual: z.coerce.number().min(0, 'KM não pode ser negativo'),
   imagem: z.string().optional(),
-  historicoAquisicao: z.array(aquisicaoSchema).default([]),
 })
 
 export default function MotoForm() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { motos, addMoto, updateMoto, clientes } = useData()
+  const { motos, addMoto, updateMoto } = useData()
   const [uploading, setUploading] = useState(false)
 
   const isEditing = !!id
@@ -79,62 +63,51 @@ export default function MotoForm() {
       ano: new Date().getFullYear(),
       cor: '',
       placa: '',
+      renavam: '',
       chassis: '',
       dataLicenciamento: '',
       valor: '',
       kmAtual: 0,
       imagem: '',
-      historicoAquisicao: [],
     },
-  })
-
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: 'historicoAquisicao',
   })
 
   useEffect(() => {
     if (isEditing && existingMoto) {
-      const formattedHistory = existingMoto.historicoAquisicao.map((h) => ({
-        ...h,
-        valor: formatCurrency(h.valor),
-      }))
-
       form.reset({
         fabricante: existingMoto.fabricante,
         modelo: existingMoto.modelo,
         ano: existingMoto.ano,
         cor: existingMoto.cor,
         placa: existingMoto.placa || '',
+        renavam: existingMoto.renavam || '',
         chassis: existingMoto.chassis || '',
         dataLicenciamento: existingMoto.dataLicenciamento || '',
         valor: formatCurrency(existingMoto.valor),
         kmAtual: existingMoto.kmAtual || 0,
         imagem: existingMoto.imagem || '',
-        historicoAquisicao: formattedHistory,
       })
     }
   }, [isEditing, existingMoto, form])
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const rawValue = parseCurrency(values.valor)
-    const processedHistory = values.historicoAquisicao.map((h) => ({
-      ...h,
-      valor: parseCurrency(h.valor),
-    }))
 
     const motoData = {
       ...values,
       valor: rawValue,
-      historicoAquisicao: processedHistory,
     }
 
-    if (isEditing && id) {
-      updateMoto(id, motoData)
-    } else {
-      addMoto(motoData)
+    try {
+      if (isEditing && id) {
+        await updateMoto(id, motoData)
+      } else {
+        await addMoto(motoData)
+      }
+      navigate('/motos')
+    } catch (error) {
+      // Error handled by DataContext toast
     }
-    navigate('/motos')
   }
 
   const handleCurrencyChange =
@@ -189,17 +162,6 @@ export default function MotoForm() {
     } finally {
       setUploading(false)
     }
-  }
-
-  const addAquisicao = () => {
-    append({
-      id: Math.random().toString(36).substr(2, 9),
-      data: new Date().toISOString().split('T')[0],
-      valor: '',
-      vendedor: '',
-      km: 0,
-      consignacao: false,
-    })
   }
 
   const isSold = existingMoto?.status === 'vendida'
@@ -381,6 +343,24 @@ export default function MotoForm() {
 
                   <FormField
                     control={form.control}
+                    name="renavam"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Renavam</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="12345678901"
+                            {...field}
+                            maxLength={11}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="chassis"
                     render={({ field }) => (
                       <FormItem>
@@ -445,150 +425,6 @@ export default function MotoForm() {
                 </div>
               </div>
 
-              <Separator />
-
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">
-                    Histórico de Aquisições
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addAquisicao}
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> Adicionar Entrada
-                  </Button>
-                </div>
-
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Data</TableHead>
-                        <TableHead className="w-[200px]">
-                          Vendedor/Origem
-                        </TableHead>
-                        <TableHead>Valor Custo</TableHead>
-                        <TableHead>KM</TableHead>
-                        <TableHead>Consignação</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fields.map((field, index) => (
-                        <TableRow key={field.id}>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`historicoAquisicao.${index}.data`}
-                              render={({ field }) => (
-                                <Input type="date" {...field} />
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`historicoAquisicao.${index}.vendedor`}
-                              render={({ field }) => (
-                                <Select
-                                  onValueChange={field.onChange}
-                                  value={field.value}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Selecione" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {clientes.map((cliente) => (
-                                      <SelectItem
-                                        key={cliente.id}
-                                        value={cliente.nome}
-                                      >
-                                        {cliente.nome}
-                                      </SelectItem>
-                                    ))}
-                                    {field.value &&
-                                      !clientes.some(
-                                        (c) => c.nome === field.value,
-                                      ) && (
-                                        <SelectItem value={field.value}>
-                                          {field.value}
-                                        </SelectItem>
-                                      )}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`historicoAquisicao.${index}.valor`}
-                              render={({ field }) => (
-                                <Input
-                                  {...field}
-                                  onChange={handleCurrencyChange(field)}
-                                  placeholder="R$ 0,00"
-                                />
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`historicoAquisicao.${index}.km`}
-                              render={({ field }) => (
-                                <Input
-                                  type="number"
-                                  placeholder="KM"
-                                  {...field}
-                                />
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`historicoAquisicao.${index}.consignacao`}
-                              render={({ field }) => (
-                                <Switch
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              )}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {fields.length === 0 && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={6}
-                            className="text-center text-muted-foreground h-24"
-                          >
-                            Nenhum registro de aquisição.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-
               <div className="flex justify-end gap-4">
                 <Button
                   type="button"
@@ -597,7 +433,12 @@ export default function MotoForm() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">Salvar</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Salvar
+                </Button>
               </div>
             </form>
           </Form>

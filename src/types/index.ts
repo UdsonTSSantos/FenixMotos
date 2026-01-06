@@ -16,13 +16,14 @@ export interface Moto {
   ano: number
   cor: string
   placa?: string
+  renavam?: string
   chassis?: string
   dataLicenciamento?: string // ISO Date
   valor: number
   status: MotoStatus
   imagem?: string
   kmAtual?: number
-  historicoAquisicao: Aquisicao[]
+  // historicoAquisicao removed as per user story
 }
 
 export interface Cliente {
@@ -42,15 +43,7 @@ export interface Cliente {
   genero?: 'masculino' | 'feminino' | 'outro'
   cnh?: string
   cnhValidade?: string // ISO Date
-  prof_empresa?: string
-  prof_endereco?: string
-  prof_telefone?: string
-  prof_email?: string
-  prof_cnpj?: string
-  prof_cargo?: string
-  prof_tempo?: string
-  prof_salario?: number
-  prof_supervisor?: string
+  // Professional fields removed as per user story
 }
 
 export type FinanciamentoStatus = 'ativo' | 'quitado' | 'inadimplente'
@@ -95,11 +88,8 @@ export interface Empresa {
   telefone3?: string
   email: string
   logo: string
-  instagram?: string
-  facebook?: string
-  x?: string
-  tiktok?: string
   website?: string
+  // Social fields removed as per user story
 }
 
 export type UserRole =

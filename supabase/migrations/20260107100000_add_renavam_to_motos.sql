@@ -1,0 +1,1 @@
+ALTER TABLE public.motos ADD COLUMN IF NOT EXISTS renavam VARCHAR(11);
