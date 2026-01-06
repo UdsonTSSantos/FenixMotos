@@ -11,11 +11,452 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.1'
+    PostgrestVersion: "14.1"
   }
   public: {
     Tables: {
-      [_ in never]: never
+      aquisicoes_moto: {
+        Row: {
+          created_at: string
+          data: string | null
+          descricao: string | null
+          id: string
+          moto_id: string | null
+          valor: number | null
+        }
+        Insert: {
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          id?: string
+          moto_id?: string | null
+          valor?: number | null
+        }
+        Update: {
+          created_at?: string
+          data?: string | null
+          descricao?: string | null
+          id?: string
+          moto_id?: string | null
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aquisicoes_moto_moto_id_fkey"
+            columns: ["moto_id"]
+            isOneToOne: false
+            referencedRelation: "motos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cnh: string | null
+          cnhValidade: string | null
+          complemento: string | null
+          cpf: string | null
+          created_at: string
+          dataNascimento: string | null
+          email: string | null
+          endereco: string | null
+          estado: string | null
+          genero: string | null
+          id: string
+          nome: string | null
+          prof_cargo: string | null
+          prof_cnpj: string | null
+          prof_email: string | null
+          prof_empresa: string | null
+          prof_endereco: string | null
+          prof_salario: number | null
+          prof_supervisor: string | null
+          prof_telefone: string | null
+          prof_tempo: string | null
+          rg: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnh?: string | null
+          cnhValidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          created_at?: string
+          dataNascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          genero?: string | null
+          id?: string
+          nome?: string | null
+          prof_cargo?: string | null
+          prof_cnpj?: string | null
+          prof_email?: string | null
+          prof_empresa?: string | null
+          prof_endereco?: string | null
+          prof_salario?: number | null
+          prof_supervisor?: string | null
+          prof_telefone?: string | null
+          prof_tempo?: string | null
+          rg?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cnh?: string | null
+          cnhValidade?: string | null
+          complemento?: string | null
+          cpf?: string | null
+          created_at?: string
+          dataNascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          genero?: string | null
+          id?: string
+          nome?: string | null
+          prof_cargo?: string | null
+          prof_cnpj?: string | null
+          prof_email?: string | null
+          prof_empresa?: string | null
+          prof_endereco?: string | null
+          prof_salario?: number | null
+          prof_supervisor?: string | null
+          prof_telefone?: string | null
+          prof_tempo?: string | null
+          rg?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      empresa: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          email: string | null
+          endereco: string | null
+          facebook: string | null
+          id: string
+          instagram: string | null
+          logo: string | null
+          nome: string | null
+          telefone: string | null
+          telefone2: string
+          telefone3: string | null
+          tiktok: string | null
+          updated_at: string | null
+          website: string | null
+          x: string | null
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          logo?: string | null
+          nome?: string | null
+          telefone?: string | null
+          telefone2: string
+          telefone3?: string | null
+          tiktok?: string | null
+          updated_at?: string | null
+          website?: string | null
+          x?: string | null
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          facebook?: string | null
+          id?: string
+          instagram?: string | null
+          logo?: string | null
+          nome?: string | null
+          telefone?: string | null
+          telefone2?: string
+          telefone3?: string | null
+          tiktok?: string | null
+          updated_at?: string | null
+          website?: string | null
+          x?: string | null
+        }
+        Relationships: []
+      }
+      financiamentos: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          data_contrato: string | null
+          id: string
+          moto_id: string | null
+          observacao: string | null
+          quantidade_parcelas: number | null
+          status: string | null
+          taxa_financiamento: number | null
+          taxa_juros_atraso: number | null
+          updated_at: string
+          valor_entrada: number | null
+          valor_financiado: number | null
+          valor_multa_atraso: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          data_contrato?: string | null
+          id?: string
+          moto_id?: string | null
+          observacao?: string | null
+          quantidade_parcelas?: number | null
+          status?: string | null
+          taxa_financiamento?: number | null
+          taxa_juros_atraso?: number | null
+          updated_at?: string
+          valor_entrada?: number | null
+          valor_financiado?: number | null
+          valor_multa_atraso?: number | null
+          valor_total?: number | null
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          data_contrato?: string | null
+          id?: string
+          moto_id?: string | null
+          observacao?: string | null
+          quantidade_parcelas?: number | null
+          status?: string | null
+          taxa_financiamento?: number | null
+          taxa_juros_atraso?: number | null
+          updated_at?: string
+          valor_entrada?: number | null
+          valor_financiado?: number | null
+          valor_multa_atraso?: number | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financiamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financiamentos_moto_id_fkey"
+            columns: ["moto_id"]
+            isOneToOne: false
+            referencedRelation: "motos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      motos: {
+        Row: {
+          ano: number | null
+          chassis: string
+          cor: string | null
+          created_at: string
+          dataLicenciamento: string
+          fabricante: string
+          id: string
+          imagem: string
+          kmAtual: number
+          modelo: string | null
+          placa: string | null
+          status: string
+          valor: number
+        }
+        Insert: {
+          ano?: number | null
+          chassis: string
+          cor?: string | null
+          created_at?: string
+          dataLicenciamento: string
+          fabricante: string
+          id?: string
+          imagem: string
+          kmAtual: number
+          modelo?: string | null
+          placa?: string | null
+          status?: string
+          valor: number
+        }
+        Update: {
+          ano?: number | null
+          chassis?: string
+          cor?: string | null
+          created_at?: string
+          dataLicenciamento?: string
+          fabricante?: string
+          id?: string
+          imagem?: string
+          kmAtual?: number
+          modelo?: string | null
+          placa?: string | null
+          status?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      parcelas: {
+        Row: {
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string | null
+          financiamento_id: string | null
+          id: string
+          numero: number | null
+          status: string | null
+          updated_at: string
+          valor_juros: number | null
+          valor_multa: number | null
+          valor_original: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          financiamento_id?: string | null
+          id?: string
+          numero?: number | null
+          status?: string | null
+          updated_at?: string
+          valor_juros?: number | null
+          valor_multa?: number | null
+          valor_original?: number | null
+          valor_total?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          financiamento_id?: string | null
+          id?: string
+          numero?: number | null
+          status?: string | null
+          updated_at?: string
+          valor_juros?: number | null
+          valor_multa?: number | null
+          valor_original?: number | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parcelas_financiamento_id_fkey"
+            columns: ["financiamento_id"]
+            isOneToOne: false
+            referencedRelation: "financiamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pecas: {
+        Row: {
+          codigo: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string | null
+          preco_custo: number | null
+          preco_venda: number | null
+          quantidade: number | null
+          updated_at: string
+        }
+        Insert: {
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string | null
+          preco_custo?: number | null
+          preco_venda?: number | null
+          quantidade?: number | null
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string | null
+          preco_custo?: number | null
+          preco_venda?: number | null
+          quantidade?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          nome: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          email?: string | null
+          id: string
+          nome?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      servicos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string | null
+          preco: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string | null
+          preco?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string | null
+          preco?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -32,33 +473,33 @@ export type Database = {
   }
 }
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])
-    ? (DefaultSchema['Tables'] &
-        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -67,23 +508,23 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -92,23 +533,23 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema['Tables']
+    | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -117,36 +558,36 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema['Enums']
+    | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema['CompositeTypes']
+    | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
@@ -154,3 +595,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
