@@ -36,6 +36,9 @@ import {
   Receipt,
   FileOutput,
   Recycle,
+  FileText,
+  Wrench,
+  Package,
 } from 'lucide-react'
 import {
   Table,
@@ -236,6 +239,7 @@ export default function OrdemServicoForm() {
 
   const totalGeral = totalPecas + totalServicos
 
+  // Calculate dynamic commission (3% of parts)
   const totalComissao = watchedItens.reduce((acc, i) => {
     if (i.tipo === 'peca') {
       return acc + i.valorTotal * 0.03
