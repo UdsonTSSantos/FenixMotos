@@ -213,13 +213,8 @@ export default function OrdemServicoForm() {
     } else {
       const s = servicos.find((x) => x.id === id)
       if (s) {
-        // Commission logic: Based on service commission percentage?
-        // User story says: "calculate a 3% commission for the vendor based specifically on the total value of parts"
-        // It doesn't mention service commission logic change, so we keep service commission based on its definition or 0?
-        // Assuming user only wants parts commission, we set service commission to 0 or respect existing logic.
-        // Existing logic used s.comissao (percentage). I will keep using it for consistency if configured, but user story emphasis is on parts.
-        // Let's stick to user story emphasis: 3% on parts. I'll leave service commission as calculated from service definition for now as it doesn't harm.
-        const commissionPerUnit = s.valor * (s.comissao / 100)
+        // Commission logic: EXCLUDE service labor from calculation (0 commission)
+        const commissionPerUnit = 0
 
         append({
           id: crypto.randomUUID(),
@@ -248,10 +243,6 @@ export default function OrdemServicoForm() {
 
   const totalGeral = totalPecas + totalServicos
 
-  // Commission calculation based on user story: 3% on parts.
-  // We calculated unit commission on add, but we should sum it up.
-  // Note: If user edits price, we should probably recalculate commission?
-  // For simplicity, we use the stored commissionUnitario.
   const totalComissao = watchedItens.reduce((acc, i) => {
     return acc + i.comissaoUnitario * i.quantidade
   }, 0)

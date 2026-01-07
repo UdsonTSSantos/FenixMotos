@@ -11,7 +11,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Trash2, Edit, CalendarClock } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  Trash2,
+  Edit,
+  CalendarClock,
+  RotateCcw,
+} from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import {
@@ -35,7 +42,7 @@ import {
 import { parseISO, isSameMonth, isSameYear } from 'date-fns'
 
 export default function Motos() {
-  const { motos, deleteMoto } = useData()
+  const { motos, deleteMoto, returnToStock } = useData()
   const [filter, setFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -163,6 +170,38 @@ export default function Motos() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      {moto.status === 'vendida' && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              title="Voltar para Estoque"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Retornar ao Estoque?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação mudará o status da moto para
+                                "Estoque".
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => returnToStock(moto.id)}
+                              >
+                                Confirmar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                       <Button variant="ghost" size="icon" asChild>
                         <Link to={`/motos/${moto.id}`}>
                           <Edit className="h-4 w-4" />

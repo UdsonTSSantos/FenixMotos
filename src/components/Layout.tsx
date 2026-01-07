@@ -85,7 +85,9 @@ export default function Layout() {
             <div className="flex items-center gap-4">
               {currentUser && (
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <span className="text-muted-foreground">Olá,</span>
+                  <span className="text-muted-foreground hidden sm:inline">
+                    Olá,
+                  </span>
                   <span className="text-primary">{currentUser.nome}</span>
                 </div>
               )}

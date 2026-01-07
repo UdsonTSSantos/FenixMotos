@@ -37,6 +37,8 @@ interface DataContextType {
   addMoto: (moto: Omit<Moto, 'id' | 'status'>) => Promise<void>
   updateMoto: (id: string, moto: Partial<Moto>) => Promise<void>
   deleteMoto: (id: string) => Promise<void>
+  returnToStock: (id: string) => Promise<void>
+
   addCliente: (cliente: Omit<Cliente, 'id'>) => Promise<void>
   updateCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>
 
@@ -248,6 +250,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
     await fetchAllData()
     toast({ title: 'Sucesso', description: 'Moto removida com sucesso.' })
+  }
+
+  const returnToStock = async (id: string) => {
+    const { error } = await supabase
+      .from('motos')
+      .update({ status: 'estoque' })
+      .eq('id', id)
+
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      throw error
+    }
+
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Moto retornada ao estoque.' })
   }
 
   // Clientes
@@ -673,7 +694,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Sucesso', description: 'Serviço removido.' })
   }
 
-  // Ordens de Serviço (antigo Orçamentos)
+  // Ordens de Serviço
   const addOrdemServico = async (
     data: Omit<OrdemServico, 'id' | 'numeroOS'>,
   ) => {
@@ -859,6 +880,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addMoto,
         updateMoto,
         deleteMoto,
+        returnToStock,
         addCliente,
         updateCliente,
         addFinanciamento,
