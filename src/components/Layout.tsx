@@ -5,6 +5,7 @@ import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/components/theme-provider'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { useData } from '@/context/DataContext'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -68,6 +69,7 @@ function DynamicBreadcrumbs() {
 
 export default function Layout() {
   const location = useLocation()
+  const { currentUser } = useData()
 
   return (
     <SidebarProvider>
@@ -81,6 +83,13 @@ export default function Layout() {
               <DynamicBreadcrumbs />
             </div>
             <div className="flex items-center gap-4">
+              {currentUser && (
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <span className="text-muted-foreground">Olá,</span>
+                  <span className="text-primary">{currentUser.nome}</span>
+                </div>
+              )}
+              <Separator orientation="vertical" className="h-6" />
               <ThemeToggle />
             </div>
           </header>

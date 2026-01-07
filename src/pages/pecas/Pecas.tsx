@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Search, Upload, FileDown, Edit } from 'lucide-react'
+import { Plus, Search, Upload, FileDown, Edit, Trash2 } from 'lucide-react'
 import { formatCurrency, parseCurrency } from '@/lib/utils'
 import {
   Dialog,
@@ -23,9 +23,27 @@ import {
 import { Label } from '@/components/ui/label'
 import { Peca } from '@/types'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 export default function Pecas() {
-  const { pecas, importPecasXML, addPeca, updatePeca, currentUser } = useData()
+  const {
+    pecas,
+    importPecasXML,
+    addPeca,
+    updatePeca,
+    deletePeca,
+    currentUser,
+  } = useData()
   const [filter, setFilter] = useState('')
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -69,8 +87,8 @@ export default function Pecas() {
       setNewNome(peca.nome)
       setNewDesc(peca.descricao)
       setNewQtd(peca.quantidade.toString())
-      setNewCusto(formatCurrency(peca.precoCusto))
-      setNewVenda(formatCurrency(peca.precoVenda))
+      setNewCusto(formatCurrency(peca.preco_custo))
+      setNewVenda(formatCurrency(peca.preco_venda))
     } else {
       setEditingPeca(null)
       setNewCodigo('')
@@ -104,8 +122,8 @@ export default function Pecas() {
       nome: newNome,
       descricao: newDesc,
       quantidade: quantity,
-      precoCusto: priceCusto,
-      precoVenda: priceVenda,
+      preco_custo: priceCusto,
+      preco_venda: priceVenda,
     }
 
     if (editingPeca) {
@@ -148,8 +166,8 @@ export default function Pecas() {
       p.nome,
       p.descricao,
       p.quantidade,
-      p.precoCusto,
-      p.precoVenda,
+      p.preco_custo,
+      p.preco_venda,
     ])
 
     const csvContent = [
@@ -206,6 +224,7 @@ export default function Pecas() {
               <TableHead>Descrição</TableHead>
               <TableHead>Qtd.</TableHead>
               <TableHead>Preço Venda</TableHead>
+              {isAdmin && <TableHead>Preço Custo</TableHead>}
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -216,23 +235,53 @@ export default function Pecas() {
                 <TableCell>{peca.nome}</TableCell>
                 <TableCell>{peca.descricao}</TableCell>
                 <TableCell>{peca.quantidade}</TableCell>
-                <TableCell>{formatCurrency(peca.precoVenda)}</TableCell>
+                <TableCell>{formatCurrency(peca.preco_venda)}</TableCell>
+                {isAdmin && (
+                  <TableCell>{formatCurrency(peca.preco_custo)}</TableCell>
+                )}
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleOpenForm(peca)}
-                    title="Editar Peça"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenForm(peca)}
+                      title="Editar Peça"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir Peça?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. Isso excluirá
+                            permanentemente a peça do estoque.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => deletePeca(peca.id)}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
             {filteredPecas.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={isAdmin ? 7 : 6}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhuma peça encontrada.

@@ -32,7 +32,7 @@ const formSchema = z.object({
   cpf: z.string().min(14, 'CPF inválido'),
   rg: z.string().optional(),
   dataNascimento: z.string().optional(),
-  genero: z.enum(['masculino', 'feminino', 'outro']).optional(),
+  genero: z.string().optional(),
   telefone: z.string().min(14, 'Telefone inválido'),
   email: z.string().email('Email inválido'),
   endereco: z.string().min(5, 'Endereço obrigatório'),
@@ -60,7 +60,7 @@ export default function ClienteForm() {
       cpf: '',
       rg: '',
       dataNascimento: '',
-      genero: undefined,
+      genero: '',
       telefone: '',
       email: '',
       endereco: '',
@@ -78,6 +78,9 @@ export default function ClienteForm() {
     if (isEditing && existing) {
       form.reset({
         ...existing,
+        // Ensure values are strings to match select options
+        genero: existing.genero || '',
+        estado: existing.estado || '',
         complemento: existing.complemento || '',
         bairro: existing.bairro || '',
         cnh: existing.cnh || '',
@@ -89,9 +92,9 @@ export default function ClienteForm() {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       if (isEditing && id) {
-        await updateCliente(id, values)
+        await updateCliente(id, values as any)
       } else {
-        await addCliente(values)
+        await addCliente(values as any)
       }
       navigate('/clientes')
     } catch (error) {
@@ -247,7 +250,7 @@ export default function ClienteForm() {
                   )}
                 />
 
-                {/* New CNH Fields */}
+                {/* CNH Fields */}
                 <FormField
                   control={form.control}
                   name="cnh"

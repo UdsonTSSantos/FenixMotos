@@ -14,7 +14,7 @@ import {
   Usuario,
   Peca,
   Servico,
-  Orcamento,
+  OrdemServico,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
@@ -28,7 +28,7 @@ interface DataContextType {
   usuarios: Usuario[]
   pecas: Peca[]
   servicos: Servico[]
-  orcamentos: Orcamento[]
+  ordensServico: OrdemServico[]
 
   currentUser: Usuario | null
   login: (email: string, pass: string) => Promise<boolean>
@@ -39,6 +39,7 @@ interface DataContextType {
   deleteMoto: (id: string) => Promise<void>
   addCliente: (cliente: Omit<Cliente, 'id'>) => Promise<void>
   updateCliente: (id: string, cliente: Partial<Cliente>) => Promise<void>
+
   addFinanciamento: (
     financiamento: Omit<Financiamento, 'id' | 'status' | 'parcelas'> & {
       parcelas: any[]
@@ -70,12 +71,14 @@ interface DataContextType {
   updateServico: (id: string, servico: Partial<Servico>) => Promise<void>
   deleteServico: (id: string) => Promise<void>
 
-  addOrcamento: (orcamento: Omit<Orcamento, 'id'>) => Promise<boolean>
-  updateOrcamento: (
-    id: string,
-    orcamento: Partial<Orcamento>,
+  addOrdemServico: (
+    os: Omit<OrdemServico, 'id' | 'numeroOS'>,
   ) => Promise<boolean>
-  deleteOrcamento: (id: string) => Promise<boolean>
+  updateOrdemServico: (
+    id: string,
+    os: Partial<OrdemServico>,
+  ) => Promise<boolean>
+  deleteOrdemServico: (id: string) => Promise<boolean>
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
@@ -99,7 +102,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [pecas, setPecas] = useState<Peca[]>([])
   const [servicos, setServicos] = useState<Servico[]>([])
-  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([])
+  const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([])
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null)
 
   const fetchAllData = async () => {
@@ -121,7 +124,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (empData) setEmpresa(empData as unknown as Empresa)
 
     // Fetch Lists
-    // Removed historicoAquisicao join as it's no longer used
     const { data: motosData } = await supabase.from('motos').select(`*`)
     if (motosData) setMotos(motosData as unknown as Moto[])
 
@@ -137,15 +139,49 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (users) setUsuarios(users as unknown as Usuario[])
 
     const { data: pecasData } = await supabase.from('pecas').select('*')
-    if (pecasData) setPecas(pecasData)
+    if (pecasData) setPecas(pecasData as Peca[])
 
     const { data: servs } = await supabase.from('servicos').select('*')
     if (servs) setServicos(servs)
 
-    const { data: orcs } = await supabase
-      .from('orcamentos')
-      .select(`*, itens:orcamento_itens(*)`)
-    if (orcs) setOrcamentos(orcs as unknown as Orcamento[])
+    const { data: oss } = await supabase
+      .from('ordens_servico')
+      .select(`*, itens:ordem_servico_itens(*)`)
+
+    if (oss) {
+      // Map DB snake_case to CamelCase
+      const mappedOS = oss.map((o: any) => ({
+        id: o.id,
+        numeroOS: o.numero_os,
+        clienteId: o.cliente_id,
+        clienteNome: o.cliente_nome,
+        clienteTelefone: o.cliente_telefone,
+        motoPlaca: o.moto_placa,
+        motoModelo: o.moto_modelo,
+        motoAno: o.moto_ano,
+        vendedorId: o.vendedor_id,
+        dataEntrada: o.data_entrada,
+        dataEntrega: o.data_entrega,
+        situacao: o.situacao,
+        observacao: o.observacao,
+        valorTotalPecas: o.valor_total_pecas,
+        valorTotalServicos: o.valor_total_servicos,
+        valorTotal: o.valor_total,
+        comissaoVendedor: o.comissao_vendedor,
+        itens: o.itens.map((i: any) => ({
+          id: i.id,
+          tipo: i.tipo,
+          referenciaId: i.referencia_id,
+          nome: i.nome,
+          quantidade: i.quantidade,
+          valorUnitario: i.valor_unitario,
+          desconto: i.desconto,
+          valorTotal: i.valor_total,
+          comissaoUnitario: i.comissao_unitario,
+        })),
+      }))
+      setOrdensServico(mappedOS)
+    }
   }
 
   useEffect(() => {
@@ -247,6 +283,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Financiamentos
   const addFinanciamento = async (data: any) => {
     const { parcelas, ...finData } = data
+
+    // Save financing header
     const { data: fin, error } = await supabase
       .from('financiamentos')
       .insert({
@@ -268,25 +306,42 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       toast({
-        title: 'Erro',
+        title: 'Erro ao salvar financiamento',
         description: error.message,
         variant: 'destructive',
       })
       throw error
     }
 
-    const parcelasDb = parcelas.map((p: Parcela) => ({
-      financiamento_id: fin.id,
-      numero: p.numero,
-      data_vencimento: p.dataVencimento,
-      valor_original: p.valorOriginal,
-      valor_juros: p.valorJuros,
-      valor_multa: p.valorMulta,
-      valor_total: p.valorTotal,
-      status: p.status,
-    }))
-    await supabase.from('parcelas').insert(parcelasDb)
+    // Save installments
+    if (parcelas && parcelas.length > 0) {
+      const parcelasDb = parcelas.map((p: Parcela) => ({
+        financiamento_id: fin.id,
+        numero: p.numero,
+        data_vencimento: p.dataVencimento,
+        valor_original: p.valorOriginal,
+        valor_juros: p.valorJuros,
+        valor_multa: p.valorMulta,
+        valor_total: p.valorTotal,
+        status: p.status,
+      }))
+      const { error: parcelasError } = await supabase
+        .from('parcelas')
+        .insert(parcelasDb)
 
+      if (parcelasError) {
+        // Rollback financing header if parcelas fail
+        await supabase.from('financiamentos').delete().eq('id', fin.id)
+        toast({
+          title: 'Erro ao gerar parcelas',
+          description: parcelasError.message,
+          variant: 'destructive',
+        })
+        throw parcelasError
+      }
+    }
+
+    // Update moto status
     await supabase
       .from('motos')
       .update({ status: 'vendida' })
@@ -516,8 +571,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       nome: data.nome,
       descricao: data.descricao,
       quantidade: data.quantidade,
-      preco_custo: data.precoCusto,
-      preco_venda: data.precoVenda,
+      preco_custo: data.preco_custo,
+      preco_venda: data.preco_venda,
     }
     const { error } = await supabase.from('pecas').insert(dbData)
     if (error) {
@@ -538,8 +593,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (data.nome) dbData.nome = data.nome
     if (data.descricao) dbData.descricao = data.descricao
     if (data.quantidade !== undefined) dbData.quantidade = data.quantidade
-    if (data.precoCusto) dbData.preco_custo = data.precoCusto
-    if (data.precoVenda) dbData.preco_venda = data.precoVenda
+    if (data.preco_custo) dbData.preco_custo = data.preco_custo
+    if (data.preco_venda) dbData.preco_venda = data.preco_venda
 
     const { error } = await supabase.from('pecas').update(dbData).eq('id', id)
     if (error) {
@@ -618,33 +673,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Sucesso', description: 'Serviço removido.' })
   }
 
-  // Orcamentos
-  const addOrcamento = async (data: Omit<Orcamento, 'id'>) => {
+  // Ordens de Serviço (antigo Orçamentos)
+  const addOrdemServico = async (
+    data: Omit<OrdemServico, 'id' | 'numeroOS'>,
+  ) => {
     try {
-      const { itens, ...orcData } = data
-      const dbOrc = {
-        cliente_id: orcData.clienteId === 'new' ? null : orcData.clienteId,
-        cliente_nome: orcData.clienteNome,
-        cliente_telefone: orcData.clienteTelefone,
-        moto_placa: orcData.motoPlaca,
-        moto_modelo: orcData.motoModelo,
-        moto_ano: orcData.motoAno,
-        vendedor_id: orcData.vendedorId,
-        data: orcData.data,
-        garantia_pecas: orcData.garantiaPecas,
-        garantia_servicos: orcData.garantiaServicos,
-        forma_pagamento: orcData.formaPagamento,
-        valor_total_pecas: orcData.valorTotalPecas,
-        valor_total_servicos: orcData.valorTotalServicos,
-        valor_total: orcData.valorTotal,
-        comissao_vendedor: orcData.comissaoVendedor,
-        status: orcData.status,
-        observacao: orcData.observacao,
+      const { itens, ...osData } = data
+      const dbOS = {
+        cliente_id: osData.clienteId === 'new' ? null : osData.clienteId,
+        cliente_nome: osData.clienteNome,
+        cliente_telefone: osData.clienteTelefone,
+        moto_placa: osData.motoPlaca,
+        moto_modelo: osData.motoModelo,
+        moto_ano: osData.motoAno,
+        vendedor_id: osData.vendedorId,
+        data_entrada: osData.dataEntrada,
+        data_entrega: osData.dataEntrega,
+        situacao: osData.situacao,
+        observacao: osData.observacao,
+        valor_total_pecas: osData.valorTotalPecas,
+        valor_total_servicos: osData.valorTotalServicos,
+        valor_total: osData.valorTotal,
+        comissao_vendedor: osData.comissaoVendedor,
       }
 
-      const { data: newOrc, error: headerError } = await supabase
-        .from('orcamentos')
-        .insert(dbOrc)
+      const { data: newOS, error: headerError } = await supabase
+        .from('ordens_servico')
+        .insert(dbOS)
         .select()
         .single()
 
@@ -654,7 +709,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       if (itens && itens.length > 0) {
         const itensDb = itens.map((i) => ({
-          orcamento_id: newOrc.id,
+          os_id: newOS.id,
           tipo: i.tipo,
           referencia_id: i.referenciaId,
           nome: i.nome,
@@ -666,63 +721,61 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }))
 
         const { error: itemsError } = await supabase
-          .from('orcamento_itens')
+          .from('ordem_servico_itens')
           .insert(itensDb)
 
         if (itemsError) {
-          await supabase.from('orcamentos').delete().eq('id', newOrc.id)
+          await supabase.from('ordens_servico').delete().eq('id', newOS.id)
           throw new Error(`Erro ao salvar itens: ${itemsError.message}`)
         }
       }
 
       await fetchAllData()
-      toast({ title: 'Sucesso', description: 'Orçamento criado com sucesso.' })
+      toast({ title: 'Sucesso', description: 'OS criada com sucesso.' })
       return true
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: error.message || 'Erro ao criar orçamento.',
+        description: error.message || 'Erro ao criar OS.',
         variant: 'destructive',
       })
       throw error
     }
   }
 
-  const updateOrcamento = async (id: string, data: Partial<Orcamento>) => {
+  const updateOrdemServico = async (
+    id: string,
+    data: Partial<OrdemServico>,
+  ) => {
     try {
-      const { itens, ...orcData } = data
+      const { itens, ...osData } = data
       const dbData: any = {}
 
-      if (orcData.status) dbData.status = orcData.status
-      if (orcData.clienteId !== undefined)
-        dbData.cliente_id =
-          orcData.clienteId === 'new' ? null : orcData.clienteId
-      if (orcData.clienteNome) dbData.cliente_nome = orcData.clienteNome
-      if (orcData.clienteTelefone)
-        dbData.cliente_telefone = orcData.clienteTelefone
-      if (orcData.motoPlaca) dbData.moto_placa = orcData.motoPlaca
-      if (orcData.motoModelo) dbData.moto_modelo = orcData.motoModelo
-      if (orcData.motoAno) dbData.moto_ano = orcData.motoAno
-      if (orcData.vendedorId) dbData.vendedor_id = orcData.vendedorId
-      if (orcData.data) dbData.data = orcData.data
-      if (orcData.garantiaPecas) dbData.garantia_pecas = orcData.garantiaPecas
-      if (orcData.garantiaServicos)
-        dbData.garantia_servicos = orcData.garantiaServicos
-      if (orcData.formaPagamento)
-        dbData.forma_pagamento = orcData.formaPagamento
-      if (orcData.valorTotalPecas !== undefined)
-        dbData.valor_total_pecas = orcData.valorTotalPecas
-      if (orcData.valorTotalServicos !== undefined)
-        dbData.valor_total_servicos = orcData.valorTotalServicos
-      if (orcData.valorTotal !== undefined)
-        dbData.valor_total = orcData.valorTotal
-      if (orcData.comissaoVendedor !== undefined)
-        dbData.comissao_vendedor = orcData.comissaoVendedor
-      if (orcData.observacao) dbData.observacao = orcData.observacao
+      if (osData.situacao) dbData.situacao = osData.situacao
+      if (osData.clienteId !== undefined)
+        dbData.cliente_id = osData.clienteId === 'new' ? null : osData.clienteId
+      if (osData.clienteNome) dbData.cliente_nome = osData.clienteNome
+      if (osData.clienteTelefone)
+        dbData.cliente_telefone = osData.clienteTelefone
+      if (osData.motoPlaca) dbData.moto_placa = osData.motoPlaca
+      if (osData.motoModelo) dbData.moto_modelo = osData.motoModelo
+      if (osData.motoAno) dbData.moto_ano = osData.motoAno
+      if (osData.vendedorId) dbData.vendedor_id = osData.vendedorId
+      if (osData.dataEntrada) dbData.data_entrada = osData.dataEntrada
+      if (osData.dataEntrega) dbData.data_entrega = osData.dataEntrega
+      if (osData.valorTotalPecas !== undefined)
+        dbData.valor_total_pecas = osData.valorTotalPecas
+      if (osData.valorTotalServicos !== undefined)
+        dbData.valor_total_servicos = osData.valorTotalServicos
+      if (osData.valorTotal !== undefined)
+        dbData.valor_total = osData.valorTotal
+      if (osData.comissaoVendedor !== undefined)
+        dbData.comissao_vendedor = osData.comissaoVendedor
+      if (osData.observacao) dbData.observacao = osData.observacao
 
       if (Object.keys(dbData).length > 0) {
         const { error } = await supabase
-          .from('orcamentos')
+          .from('ordens_servico')
           .update(dbData)
           .eq('id', id)
         if (error) throw error
@@ -730,15 +783,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       if (itens) {
         const { error: deleteError } = await supabase
-          .from('orcamento_itens')
+          .from('ordem_servico_itens')
           .delete()
-          .eq('orcamento_id', id)
+          .eq('os_id', id)
 
         if (deleteError) throw deleteError
 
         if (itens.length > 0) {
           const itensDb = itens.map((i) => ({
-            orcamento_id: id,
+            os_id: id,
             tipo: i.tipo,
             referencia_id: i.referenciaId,
             nome: i.nome,
@@ -750,31 +803,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }))
 
           const { error: insertError } = await supabase
-            .from('orcamento_itens')
+            .from('ordem_servico_itens')
             .insert(itensDb)
           if (insertError) throw insertError
         }
       }
 
       await fetchAllData()
-      toast({ title: 'Sucesso', description: 'Orçamento atualizado.' })
+      toast({ title: 'Sucesso', description: 'OS atualizada.' })
       return true
     } catch (error: any) {
       toast({
         title: 'Erro',
-        description: error.message || 'Erro ao atualizar orçamento.',
+        description: error.message || 'Erro ao atualizar OS.',
         variant: 'destructive',
       })
       throw error
     }
   }
 
-  const deleteOrcamento = async (id: string) => {
+  const deleteOrdemServico = async (id: string) => {
     try {
-      const { error } = await supabase.from('orcamentos').delete().eq('id', id)
+      const { error } = await supabase
+        .from('ordens_servico')
+        .delete()
+        .eq('id', id)
       if (error) throw error
       await fetchAllData()
-      toast({ title: 'Sucesso', description: 'Orçamento removido.' })
+      toast({ title: 'Sucesso', description: 'OS removida.' })
       return true
     } catch (error: any) {
       toast({
@@ -796,7 +852,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         usuarios,
         pecas,
         servicos,
-        orcamentos,
+        ordensServico,
         currentUser,
         login,
         logout,
@@ -820,9 +876,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addServico,
         updateServico,
         deleteServico,
-        addOrcamento,
-        updateOrcamento,
-        deleteOrcamento,
+        addOrdemServico,
+        updateOrdemServico,
+        deleteOrdemServico,
       }}
     >
       {children}

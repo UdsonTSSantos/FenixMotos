@@ -30,7 +30,6 @@ export default function Financiamentos() {
   const getClienteName = (id: string) =>
     clientes.find((c) => c.id === id)?.nome || 'Desconhecido'
 
-  // Enhanced to return Plate + Model
   const getMotoInfo = (id: string) => {
     const moto = motos.find((m) => m.id === id)
     if (!moto) return 'Desconhecida'
@@ -42,7 +41,6 @@ export default function Financiamentos() {
     const clienteName = getClienteName(fin.clienteId).toLowerCase()
     const motoInfo = getMotoInfo(fin.motoId).toLowerCase()
 
-    // Support searching by new Contract Number if available, or ID
     const contractNum = fin.numeroContrato ? fin.numeroContrato.toString() : ''
     const idMatch = fin.id.includes(filter) || contractNum.includes(filter)
 

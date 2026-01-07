@@ -7,9 +7,9 @@ import {
   Wrench,
   Package,
   FileSpreadsheet,
-  Shield,
   BarChart3,
   UserCog,
+  LogOut,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -26,20 +26,22 @@ import {
 import { Link, useLocation } from 'react-router-dom'
 import { useData } from '@/context/DataContext'
 import { Button } from '@/components/ui/button'
-import { LogOut } from 'lucide-react'
 
 export function AppSidebar() {
   const location = useLocation()
   const { empresa, currentUser, logout } = useData()
 
-  // Dynamic items based on role could be implemented here
-  // For now, show all but maybe restrict access in routes or visually here
+  // Updated menu items to reflect "Ordem de Serviço" instead of Orçamentos
   const items = [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },
     { title: 'Motos', url: '/motos', icon: Bike },
     { title: 'Clientes', url: '/clientes', icon: Users },
     { title: 'Financiamentos', url: '/financiamentos', icon: FileText },
-    { title: 'Orçamentos', url: '/orcamentos', icon: FileSpreadsheet },
+    {
+      title: 'Ordem de Serviço',
+      url: '/ordens-servico',
+      icon: FileSpreadsheet,
+    },
     { title: 'Peças', url: '/pecas', icon: Package },
     { title: 'Serviços', url: '/servicos', icon: Wrench },
     { title: 'Empresa', url: '/empresa', icon: Building2 },

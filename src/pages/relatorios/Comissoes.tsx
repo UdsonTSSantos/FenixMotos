@@ -19,12 +19,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatContractId } from '@/lib/utils'
 import { FileText, Printer } from 'lucide-react'
 import { parseISO, isWithinInterval, startOfDay, endOfDay } from 'date-fns'
 
 export default function Comissoes() {
-  const { orcamentos, usuarios, empresa } = useData()
+  const { ordensServico, usuarios, empresa } = useData()
 
   const [selectedUser, setSelectedUser] = useState<string>('all')
   const [segment, setSegment] = useState<'all' | 'pecas' | 'servicos'>('all')
@@ -34,10 +34,10 @@ export default function Comissoes() {
     'none',
   )
 
-  // Filter approved quotations
-  const approvedOrcamentos = orcamentos.filter((o) => o.status === 'aprovado')
+  // Filter completed OS (assuming commission is paid on completion)
+  const completedOS = ordensServico.filter((o) => o.situacao === 'Concluído')
 
-  const filteredData = approvedOrcamentos.filter((o) => {
+  const filteredData = completedOS.filter((o) => {
     let matchesUser = true
     let matchesDate = true
 
@@ -46,7 +46,7 @@ export default function Comissoes() {
     }
 
     if (startDate && endDate) {
-      const date = parseISO(o.data)
+      const date = parseISO(o.dataEntrada)
       const start = startOfDay(parseISO(startDate))
       const end = endOfDay(parseISO(endDate))
       matchesDate = isWithinInterval(date, { start, end })
@@ -55,13 +55,13 @@ export default function Comissoes() {
     return matchesUser && matchesDate
   })
 
-  // Calculate commission for a specific budget based on selected segment
-  const calculateBudgetCommission = (
-    budget: (typeof approvedOrcamentos)[0],
+  // Calculate commission for a specific OS based on selected segment
+  const calculateOSCommission = (
+    os: (typeof completedOS)[0],
     seg: typeof segment,
   ) => {
     // Only count items that match segment
-    const items = budget.itens || []
+    const items = os.itens || []
 
     return items.reduce((acc, item) => {
       if (seg === 'pecas' && item.tipo !== 'peca') return acc
@@ -72,24 +72,24 @@ export default function Comissoes() {
     }, 0)
   }
 
-  // Calculate sales total for a specific budget based on segment
-  const calculateBudgetSalesTotal = (
-    budget: (typeof approvedOrcamentos)[0],
+  // Calculate sales total for a specific OS based on segment
+  const calculateOSSalesTotal = (
+    os: (typeof completedOS)[0],
     seg: typeof segment,
   ) => {
-    if (seg === 'pecas') return budget.valorTotalPecas
-    if (seg === 'servicos') return budget.valorTotalServicos
-    return budget.valorTotal
+    if (seg === 'pecas') return os.valorTotalPecas
+    if (seg === 'servicos') return os.valorTotalServicos
+    return os.valorTotal
   }
 
   // Calculate global totals for filtered data
   const totalCommission = filteredData.reduce(
-    (acc, curr) => acc + calculateBudgetCommission(curr, segment),
+    (acc, curr) => acc + calculateOSCommission(curr, segment),
     0,
   )
 
   const totalSales = filteredData.reduce(
-    (acc, curr) => acc + calculateBudgetSalesTotal(curr, segment),
+    (acc, curr) => acc + calculateOSSalesTotal(curr, segment),
     0,
   )
 
@@ -109,11 +109,11 @@ export default function Comissoes() {
 
     return salesPeople
       .map((sp) => {
-        // Find budgets for this salesperson within date range
-        const budgets = approvedOrcamentos.filter((o) => {
+        // Find OS for this salesperson within date range
+        const osList = completedOS.filter((o) => {
           if (o.vendedorId !== sp.id) return false
           if (startDate && endDate) {
-            const date = parseISO(o.data)
+            const date = parseISO(o.dataEntrada)
             const start = startOfDay(parseISO(startDate))
             const end = endOfDay(parseISO(endDate))
             return isWithinInterval(date, { start, end })
@@ -121,12 +121,12 @@ export default function Comissoes() {
           return true
         })
 
-        const sales = budgets.reduce(
-          (acc, b) => acc + calculateBudgetSalesTotal(b, segment),
+        const sales = osList.reduce(
+          (acc, o) => acc + calculateOSSalesTotal(o, segment),
           0,
         )
-        const comm = budgets.reduce(
-          (acc, b) => acc + calculateBudgetCommission(b, segment),
+        const comm = osList.reduce(
+          (acc, o) => acc + calculateOSCommission(o, segment),
           0,
         )
 
@@ -135,7 +135,7 @@ export default function Comissoes() {
           nome: sp.nome,
           totalSales: sales,
           totalCommission: comm,
-          budgetCount: budgets.length,
+          osCount: osList.length,
         }
       })
       .filter((sp) => sp.totalSales > 0) // Only show active
@@ -207,9 +207,7 @@ export default function Comissoes() {
               <thead>
                 <tr className="bg-gray-100">
                   <th className="border border-black p-2 text-left">Data</th>
-                  <th className="border border-black p-2 text-left">
-                    Orçamento
-                  </th>
+                  <th className="border border-black p-2 text-left">OS</th>
                   <th className="border border-black p-2 text-left">Cliente</th>
                   <th className="border border-black p-2 text-right">
                     Total Venda ({segment === 'all' ? 'Geral' : segment})
@@ -223,19 +221,19 @@ export default function Comissoes() {
                 {filteredData.map((item) => (
                   <tr key={item.id}>
                     <td className="border border-black p-2">
-                      {new Date(item.data).toLocaleDateString()}
+                      {new Date(item.dataEntrada).toLocaleDateString()}
                     </td>
                     <td className="border border-black p-2">
-                      #{item.id.substring(0, 8).toUpperCase()}
+                      #{formatContractId(item.numeroOS)}
                     </td>
                     <td className="border border-black p-2">
                       {item.clienteNome}
                     </td>
                     <td className="border border-black p-2 text-right">
-                      {formatCurrency(calculateBudgetSalesTotal(item, segment))}
+                      {formatCurrency(calculateOSSalesTotal(item, segment))}
                     </td>
                     <td className="border border-black p-2 text-right">
-                      {formatCurrency(calculateBudgetCommission(item, segment))}
+                      {formatCurrency(calculateOSCommission(item, segment))}
                     </td>
                   </tr>
                 ))}
@@ -269,7 +267,7 @@ export default function Comissoes() {
                     Vendedor
                   </th>
                   <th className="border border-black p-2 text-center">
-                    Qtd. Orçamentos
+                    Qtd. OS
                   </th>
                   <th className="border border-black p-2 text-right">
                     Total Vendas
@@ -286,7 +284,7 @@ export default function Comissoes() {
                       {sp.nome}
                     </td>
                     <td className="border border-black p-2 text-center">
-                      {sp.budgetCount}
+                      {sp.osCount}
                     </td>
                     <td className="border border-black p-2 text-right">
                       {formatCurrency(sp.totalSales)}
@@ -311,10 +309,7 @@ export default function Comissoes() {
                 <tr className="bg-gray-100 font-bold">
                   <td className="border border-black p-2 text-right">TOTAIS</td>
                   <td className="border border-black p-2 text-center">
-                    {generalReportData.reduce(
-                      (acc, c) => acc + c.budgetCount,
-                      0,
-                    )}
+                    {generalReportData.reduce((acc, c) => acc + c.osCount, 0)}
                   </td>
                   <td className="border border-black p-2 text-right">
                     {formatCurrency(generalTotalSales)}
@@ -340,7 +335,7 @@ export default function Comissoes() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Relatório de Comissões</h1>
+        <h1 className="text-3xl font-bold">Relatório de Comissões (OS)</h1>
         <div className="flex gap-2">
           <Button onClick={() => handlePrint('general')} variant="secondary">
             <FileText className="mr-2 h-4 w-4" /> Relatório Geral (Todos)
@@ -428,7 +423,7 @@ export default function Comissoes() {
               {formatCurrency(totalSales)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {filteredData.length} orçamentos encontrados
+              {filteredData.length} ordens de serviço (Concluídas)
             </p>
           </CardContent>
         </Card>
@@ -458,6 +453,7 @@ export default function Comissoes() {
           <TableHeader>
             <TableRow>
               <TableHead>Data</TableHead>
+              <TableHead>Nº OS</TableHead>
               <TableHead>Vendedor</TableHead>
               <TableHead>Cliente</TableHead>
               {segment === 'all' && <TableHead>Total Peças</TableHead>}
@@ -475,8 +471,9 @@ export default function Comissoes() {
               return (
                 <TableRow key={item.id}>
                   <TableCell>
-                    {new Date(item.data).toLocaleDateString()}
+                    {new Date(item.dataEntrada).toLocaleDateString()}
                   </TableCell>
+                  <TableCell>#{formatContractId(item.numeroOS)}</TableCell>
                   <TableCell>{vendedor}</TableCell>
                   <TableCell>{item.clienteNome}</TableCell>
                   {segment === 'all' && (
@@ -490,10 +487,10 @@ export default function Comissoes() {
                     </TableCell>
                   )}
                   <TableCell className="font-medium">
-                    {formatCurrency(calculateBudgetSalesTotal(item, segment))}
+                    {formatCurrency(calculateOSSalesTotal(item, segment))}
                   </TableCell>
                   <TableCell className="text-right font-bold text-emerald-600">
-                    {formatCurrency(calculateBudgetCommission(item, segment))}
+                    {formatCurrency(calculateOSCommission(item, segment))}
                   </TableCell>
                 </TableRow>
               )
@@ -501,7 +498,7 @@ export default function Comissoes() {
             {filteredData.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={segment === 'all' ? 7 : 5}
+                  colSpan={segment === 'all' ? 8 : 6}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhum registro encontrado para o filtro selecionado.

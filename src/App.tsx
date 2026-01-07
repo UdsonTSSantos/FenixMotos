@@ -32,8 +32,8 @@ import Colaboradores from '@/pages/colaboradores/Colaboradores'
 import ColaboradorForm from '@/pages/colaboradores/ColaboradorForm'
 import Pecas from '@/pages/pecas/Pecas'
 import Servicos from '@/pages/servicos/Servicos'
-import Orcamentos from '@/pages/orcamentos/Orcamentos'
-import OrcamentoForm from '@/pages/orcamentos/OrcamentoForm'
+import OrdensServico from '@/pages/ordens-servico/OrdensServico'
+import OrdemServicoForm from '@/pages/ordens-servico/OrdemServicoForm'
 import Comissoes from '@/pages/relatorios/Comissoes'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -122,9 +122,15 @@ const App = () => (
                 <Route path="/pecas" element={<Pecas />} />
                 <Route path="/servicos" element={<Servicos />} />
 
-                <Route path="/orcamentos" element={<Orcamentos />} />
-                <Route path="/orcamentos/novo" element={<OrcamentoForm />} />
-                <Route path="/orcamentos/:id" element={<OrcamentoForm />} />
+                <Route path="/ordens-servico" element={<OrdensServico />} />
+                <Route
+                  path="/ordens-servico/nova"
+                  element={<OrdemServicoForm />}
+                />
+                <Route
+                  path="/ordens-servico/:id"
+                  element={<OrdemServicoForm />}
+                />
 
                 <Route path="/relatorios/comissoes" element={<Comissoes />} />
               </Route>

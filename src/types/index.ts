@@ -23,7 +23,7 @@ export interface Moto {
   status: MotoStatus
   imagem?: string
   kmAtual?: number
-  // historicoAquisicao removed as per user story
+  observacao?: string
 }
 
 export interface Cliente {
@@ -43,7 +43,6 @@ export interface Cliente {
   genero?: 'masculino' | 'feminino' | 'outro'
   cnh?: string
   cnhValidade?: string // ISO Date
-  // Professional fields removed as per user story
 }
 
 export type FinanciamentoStatus = 'ativo' | 'quitado' | 'inadimplente'
@@ -89,7 +88,6 @@ export interface Empresa {
   email: string
   logo: string
   website?: string
-  // Social fields removed as per user story
 }
 
 export type UserRole =
@@ -123,8 +121,8 @@ export interface Peca {
   nome: string
   descricao: string
   quantidade: number
-  precoCusto: number
-  precoVenda: number
+  preco_custo: number
+  preco_venda: number
   localizacao?: string
 }
 
@@ -136,9 +134,9 @@ export interface Servico {
   comissao: number // Percentage value (e.g. 10 for 10%)
 }
 
-export type OrcamentoStatus = 'aberto' | 'aprovado' | 'rejeitado'
+export type OSSituacao = 'Aberto' | 'Em Andamento' | 'Concluído' | 'Cancelado'
 
-export interface OrcamentoItem {
+export interface OrdemServicoItem {
   id: string
   tipo: 'peca' | 'servico'
   referenciaId: string // id of Peca or Servico
@@ -150,17 +148,9 @@ export interface OrcamentoItem {
   comissaoUnitario: number // Value in currency per unit
 }
 
-export type WarrantyOption =
-  | 'Sem garantia'
-  | '03 meses'
-  | '06 meses'
-  | '12 meses'
-  | '18 meses'
-  | '24 meses'
-  | 'Peça fornecida pelo cliente'
-
-export interface Orcamento {
+export interface OrdemServico {
   id: string
+  numeroOS: number
   clienteId: string
   clienteNome: string
   clienteTelefone?: string
@@ -168,17 +158,15 @@ export interface Orcamento {
   motoModelo?: string
   motoAno?: number
   vendedorId: string
-  data: string // ISO Date
-  garantiaPecas: WarrantyOption
-  garantiaServicos: WarrantyOption
-  formaPagamento: string
-  itens: OrcamentoItem[]
+  dataEntrada: string // ISO Date
+  dataEntrega?: string // ISO Date
+  situacao: OSSituacao
+  observacao?: string
   valorTotalPecas: number
   valorTotalServicos: number
   valorTotal: number
   comissaoVendedor: number
-  status: OrcamentoStatus
-  observacao?: string
+  itens: OrdemServicoItem[]
 }
 
 export const FABRICANTES = [

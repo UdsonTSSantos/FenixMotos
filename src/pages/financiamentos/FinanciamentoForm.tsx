@@ -141,9 +141,10 @@ export default function FinanciamentoForm() {
     const count = watchParcelas || 1
     const rate = watchTaxaFinanciamento || 0
 
-    const baseParcel = principal / count
-    const interestPart = baseParcel * (rate / 100)
-    const finalParcel = baseParcel + interestPart
+    // Simple calculation: Principal + Interest % / Count
+    const interestAmount = principal * (rate / 100)
+    const totalWithInterest = principal + interestAmount
+    const finalParcel = totalWithInterest / count
 
     if (!isNaN(finalParcel) && finalParcel !== Infinity) {
       if (selectedMoto.valor > 0) {
@@ -174,7 +175,7 @@ export default function FinanciamentoForm() {
       form.setValue(fieldName, formatCurrency(number))
     }
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const moto =
       isEditing && !selectedMoto ? existingFinanciamento : selectedMoto
 
@@ -202,7 +203,7 @@ export default function FinanciamentoForm() {
 
     const newParcelas = Array.from({ length: values.quantidadeParcelas }).map(
       (_, i) => {
-        const dueDate = addDays(firstDate, i * 30)
+        const dueDate = addDays(firstDate, i * 30) // Assuming 30 days interval
         return {
           numero: i + 1,
           dataVencimento: dueDate.toISOString(),
@@ -229,15 +230,19 @@ export default function FinanciamentoForm() {
       parcelas: newParcelas,
     }
 
-    if (isEditing && id) {
-      updateFinanciamento(id, commonData)
-      navigate(`/financiamentos/${id}`)
-    } else {
-      addFinanciamento({
-        ...commonData,
-        dataContrato: contractDate,
-      })
-      navigate('/financiamentos')
+    try {
+      if (isEditing && id) {
+        await updateFinanciamento(id, commonData)
+        navigate(`/financiamentos/${id}`)
+      } else {
+        await addFinanciamento({
+          ...commonData,
+          dataContrato: contractDate,
+        })
+        navigate('/financiamentos')
+      }
+    } catch (error) {
+      // Handled in context
     }
   }
 

@@ -28,6 +28,7 @@ import { parseCurrency, formatCurrency } from '@/lib/utils'
 import { Upload, Loader2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
+import { Textarea } from '@/components/ui/textarea'
 
 const formSchema = z.object({
   fabricante: z.string().min(1, 'Selecione um fabricante'),
@@ -44,6 +45,8 @@ const formSchema = z.object({
   valor: z.string().min(1, 'Valor é obrigatório'),
   kmAtual: z.coerce.number().min(0, 'KM não pode ser negativo'),
   imagem: z.string().optional(),
+  observacao: z.string().optional(),
+  status: z.enum(['estoque', 'vendida']).default('estoque'),
 })
 
 export default function MotoForm() {
@@ -69,6 +72,8 @@ export default function MotoForm() {
       valor: '',
       kmAtual: 0,
       imagem: '',
+      observacao: '',
+      status: 'estoque',
     },
   })
 
@@ -86,6 +91,8 @@ export default function MotoForm() {
         valor: formatCurrency(existingMoto.valor),
         kmAtual: existingMoto.kmAtual || 0,
         imagem: existingMoto.imagem || '',
+        observacao: existingMoto.observacao || '',
+        status: existingMoto.status,
       })
     }
   }, [isEditing, existingMoto, form])
@@ -164,7 +171,6 @@ export default function MotoForm() {
     }
   }
 
-  const isSold = existingMoto?.status === 'vendida'
   const currentImage = form.watch('imagem')
 
   return (
@@ -252,7 +258,6 @@ export default function MotoForm() {
                           onValueChange={field.onChange}
                           defaultValue={field.value}
                           value={field.value}
-                          disabled={isSold}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -279,11 +284,7 @@ export default function MotoForm() {
                       <FormItem>
                         <FormLabel>Modelo</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Ex: CG 160"
-                            {...field}
-                            disabled={isSold}
-                          />
+                          <Input placeholder="Ex: CG 160" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -297,7 +298,7 @@ export default function MotoForm() {
                       <FormItem>
                         <FormLabel>Ano</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} disabled={isSold} />
+                          <Input type="number" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -311,11 +312,7 @@ export default function MotoForm() {
                       <FormItem>
                         <FormLabel>Cor</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Ex: Vermelho"
-                            {...field}
-                            disabled={isSold}
-                          />
+                          <Input placeholder="Ex: Vermelho" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -415,7 +412,51 @@ export default function MotoForm() {
                           <Input
                             {...field}
                             onChange={handleCurrencyChange(field)}
-                            disabled={isSold}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {isEditing && (
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="estoque">Estoque</SelectItem>
+                              <SelectItem value="vendida">Vendida</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name="observacao"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Observações</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Histórico, avarias, detalhes extras..."
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
