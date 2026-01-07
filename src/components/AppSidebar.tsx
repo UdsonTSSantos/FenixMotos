@@ -10,6 +10,7 @@ import {
   BarChart3,
   UserCog,
   LogOut,
+  Briefcase,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -49,6 +50,7 @@ export function AppSidebar() {
 
   const adminItems = [
     { title: 'Colaboradores', url: '/colaboradores', icon: UserCog },
+    { title: 'Vendedores', url: '/vendedores', icon: Briefcase },
     { title: 'Comissões', url: '/relatorios/comissoes', icon: BarChart3 },
   ]
 

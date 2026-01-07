@@ -115,6 +115,12 @@ export interface Usuario {
   cpf?: string
 }
 
+export interface Vendedor {
+  id: string
+  nome: string
+  ativo: boolean
+}
+
 export interface Peca {
   id: string
   codigo: string

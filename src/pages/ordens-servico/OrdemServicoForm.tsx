@@ -93,13 +93,12 @@ export default function OrdemServicoForm() {
     addOrdemServico,
     updateOrdemServico,
     clientes,
-    usuarios,
+    vendedores,
     pecas,
     servicos,
     empresa,
     financiamentos,
     motos,
-    currentUser,
   } = useData()
   const [openClientSearch, setOpenClientSearch] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -107,8 +106,8 @@ export default function OrdemServicoForm() {
   const isEditing = !!id
   const existing = ordensServico.find((o) => o.id === id)
 
-  // Filter active users for vendor select
-  const vendedores = usuarios.filter((u) => u.ativo)
+  // Filter active vendors for select (from the new Vendedores module)
+  const activeVendedores = vendedores.filter((v) => v.ativo)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -126,13 +125,6 @@ export default function OrdemServicoForm() {
       itens: [],
     },
   })
-
-  // Auto-assign salesperson for new OS
-  useEffect(() => {
-    if (!isEditing && currentUser && !form.getValues('vendedorId')) {
-      form.setValue('vendedorId', currentUser.id)
-    }
-  }, [isEditing, currentUser, form])
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -243,8 +235,12 @@ export default function OrdemServicoForm() {
 
   const totalGeral = totalPecas + totalServicos
 
+  // Re-calculate commission based on strict 3% rule for parts only
   const totalComissao = watchedItens.reduce((acc, i) => {
-    return acc + i.comissaoUnitario * i.quantidade
+    if (i.tipo === 'peca') {
+      return acc + i.valorTotal * 0.03
+    }
+    return acc
   }, 0)
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -576,9 +572,14 @@ export default function OrdemServicoForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {vendedores.map((u) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.nome}
+                          {activeVendedores.length === 0 && (
+                            <SelectItem value="none" disabled>
+                              Nenhum vendedor ativo
+                            </SelectItem>
+                          )}
+                          {activeVendedores.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {v.nome}
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -15,6 +15,7 @@ import {
   Peca,
   Servico,
   OrdemServico,
+  Vendedor,
 } from '@/types'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/lib/supabase/client'
@@ -26,6 +27,7 @@ interface DataContextType {
   financiamentos: Financiamento[]
   empresa: Empresa
   usuarios: Usuario[]
+  vendedores: Vendedor[]
   pecas: Peca[]
   servicos: Servico[]
   ordensServico: OrdemServico[]
@@ -63,6 +65,9 @@ interface DataContextType {
   addUsuario: (user: Omit<Usuario, 'id'>) => Promise<boolean>
   updateUsuario: (id: string, user: Partial<Usuario>) => Promise<void>
   deleteUsuario: (id: string) => Promise<void>
+
+  addVendedor: (vendedor: Omit<Vendedor, 'id'>) => Promise<boolean>
+  updateVendedor: (id: string, vendedor: Partial<Vendedor>) => Promise<boolean>
 
   addPeca: (peca: Omit<Peca, 'id'>) => Promise<void>
   updatePeca: (id: string, peca: Partial<Peca>) => Promise<void>
@@ -102,6 +107,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [financiamentos, setFinanciamentos] = useState<Financiamento[]>([])
   const [empresa, setEmpresa] = useState<Empresa>(DEFAULT_EMPRESA)
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [vendedores, setVendedores] = useState<Vendedor[]>([])
   const [pecas, setPecas] = useState<Peca[]>([])
   const [servicos, setServicos] = useState<Servico[]>([])
   const [ordensServico, setOrdensServico] = useState<OrdemServico[]>([])
@@ -139,6 +145,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     const { data: users } = await supabase.from('profiles').select('*')
     if (users) setUsuarios(users as unknown as Usuario[])
+
+    const { data: vends } = await supabase
+      .from('vendedores')
+      .select('*')
+      .order('nome')
+    if (vends) setVendedores(vends as unknown as Vendedor[])
 
     const { data: pecasData } = await supabase.from('pecas').select('*')
     if (pecasData) setPecas(pecasData as Peca[])
@@ -585,6 +597,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     toast({ title: 'Sucesso', description: 'Colaborador desativado.' })
   }
 
+  // Vendedores
+  const addVendedor = async (data: Omit<Vendedor, 'id'>) => {
+    const { error } = await supabase.from('vendedores').insert(data)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      return false
+    }
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Vendedor cadastrado.' })
+    return true
+  }
+
+  const updateVendedor = async (id: string, data: Partial<Vendedor>) => {
+    const { error } = await supabase
+      .from('vendedores')
+      .update(data)
+      .eq('id', id)
+    if (error) {
+      toast({
+        title: 'Erro',
+        description: error.message,
+        variant: 'destructive',
+      })
+      return false
+    }
+    await fetchAllData()
+    toast({ title: 'Sucesso', description: 'Vendedor atualizado.' })
+    return true
+  }
+
   // Pecas
   const addPeca = async (data: Omit<Peca, 'id'>) => {
     const dbData = {
@@ -871,6 +917,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         financiamentos,
         empresa,
         usuarios,
+        vendedores,
         pecas,
         servicos,
         ordensServico,
@@ -891,6 +938,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addUsuario,
         updateUsuario,
         deleteUsuario,
+        addVendedor,
+        updateVendedor,
         addPeca,
         updatePeca,
         deletePeca,

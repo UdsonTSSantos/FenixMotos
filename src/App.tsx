@@ -35,6 +35,7 @@ import Servicos from '@/pages/servicos/Servicos'
 import OrdensServico from '@/pages/ordens-servico/OrdensServico'
 import OrdemServicoForm from '@/pages/ordens-servico/OrdemServicoForm'
 import Comissoes from '@/pages/relatorios/Comissoes'
+import Vendedores from '@/pages/vendedores/Vendedores'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth()
@@ -118,6 +119,8 @@ const App = () => (
                   path="/colaboradores/:id"
                   element={<ColaboradorForm />}
                 />
+
+                <Route path="/vendedores" element={<Vendedores />} />
 
                 <Route path="/pecas" element={<Pecas />} />
                 <Route path="/servicos" element={<Servicos />} />
