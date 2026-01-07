@@ -33,6 +33,9 @@ import {
   MessageCircle,
   MessageSquare,
   Loader2,
+  Receipt,
+  FileOutput,
+  Recycle,
 } from 'lucide-react'
 import {
   Table,
@@ -102,11 +105,14 @@ export default function OrdemServicoForm() {
   } = useData()
   const [openClientSearch, setOpenClientSearch] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [printMode, setPrintMode] = useState<
+    'none' | 'os' | 'orcamento' | 'cupom'
+  >('none')
 
   const isEditing = !!id
   const existing = ordensServico.find((o) => o.id === id)
 
-  // Filter active vendors for select (from the new Vendedores module)
+  // Filter active vendors for select
   const activeVendedores = vendedores.filter((v) => v.ativo)
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -187,9 +193,7 @@ export default function OrdemServicoForm() {
     if (type === 'peca') {
       const p = pecas.find((x) => x.id === id)
       if (p) {
-        // Commission logic: 3% commission on parts
         const commissionPerUnit = p.preco_venda * 0.03
-
         append({
           id: crypto.randomUUID(),
           tipo: 'peca',
@@ -205,9 +209,6 @@ export default function OrdemServicoForm() {
     } else {
       const s = servicos.find((x) => x.id === id)
       if (s) {
-        // Commission logic: EXCLUDE service labor from calculation (0 commission)
-        const commissionPerUnit = 0
-
         append({
           id: crypto.randomUUID(),
           tipo: 'servico',
@@ -217,7 +218,7 @@ export default function OrdemServicoForm() {
           valorUnitario: s.valor,
           desconto: 0,
           valorTotal: s.valor,
-          comissaoUnitario: commissionPerUnit,
+          comissaoUnitario: 0,
         })
       }
     }
@@ -235,12 +236,18 @@ export default function OrdemServicoForm() {
 
   const totalGeral = totalPecas + totalServicos
 
-  // Re-calculate commission based on strict 3% rule for parts only
   const totalComissao = watchedItens.reduce((acc, i) => {
     if (i.tipo === 'peca') {
       return acc + i.valorTotal * 0.03
     }
     return acc
+  }, 0)
+
+  // Calculate Total Discount
+  const totalDesconto = watchedItens.reduce((acc, i) => {
+    const originalTotal = i.quantidade * i.valorUnitario
+    const currentTotal = i.valorTotal
+    return acc + (originalTotal - currentTotal)
   }, 0)
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -265,35 +272,12 @@ export default function OrdemServicoForm() {
     }
   }
 
-  const handlePrint = () => {
-    window.print()
-  }
-
-  const getMessageBody = () => {
-    const cliente = form.getValues('clienteNome')
-    const veiculo = `${form.getValues('motoModelo')} (${form.getValues('motoPlaca')})`
-    const osNum = existing ? `#${formatContractId(existing.numeroOS)}` : 'NOVA'
-
-    let message = `*ORDEM DE SERVIÇO ${osNum} - ${empresa.nome}*\n\n`
-    message += `*Cliente:* ${cliente}\n`
-    message += `*Veículo:* ${veiculo}\n`
-    message += `*Situação:* ${form.getValues('situacao')}\n\n`
-
-    if (watchedItens.length > 0) {
-      message += `*RESUMO DO SERVIÇO:*\n`
-      watchedItens.forEach((i) => {
-        message += `${i.quantidade}x ${i.nome} - ${formatCurrency(i.valorTotal)}\n`
-      })
-      message += `\n`
-    }
-
-    message += `*TOTAL GERAL:* ${formatCurrency(totalGeral)}\n`
-
-    if (form.getValues('observacao')) {
-      message += `\n*Obs:* ${form.getValues('observacao')}`
-    }
-
-    return message
+  const handlePrint = (mode: 'os' | 'orcamento' | 'cupom') => {
+    setPrintMode(mode)
+    setTimeout(() => {
+      window.print()
+      // Optional: setPrintMode('none') after print if preferred, but leaving it allows re-print
+    }, 300)
   }
 
   const handleWhatsApp = () => {
@@ -302,232 +286,437 @@ export default function OrdemServicoForm() {
       alert('Telefone do cliente não preenchido')
       return
     }
-    const message = getMessageBody()
-    const url = `https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
 
-  const handleSMS = () => {
-    const phone = form.getValues('clienteTelefone')?.replace(/\D/g, '')
-    if (!phone) {
-      alert('Telefone do cliente não preenchido')
-      return
-    }
-    const message = `OS ${existing ? formatContractId(existing.numeroOS) : 'Nova'} - ${empresa.nome}: Total ${formatCurrency(totalGeral)}. Status: ${form.getValues('situacao')}`
-    // Use sms: link scheme
-    window.open(`sms:${phone}?body=${encodeURIComponent(message)}`, '_self')
+    const cliente = form.getValues('clienteNome')
+    const modelo = form.getValues('motoModelo') || 'Moto'
+    const osNum = existing ? formatContractId(existing.numeroOS) : 'NOVA'
+    const itemsSummary = watchedItens
+      .slice(0, 3)
+      .map((i) => `• ${i.quantidade}x ${i.nome}`)
+      .join('\n')
+    const moreItems =
+      watchedItens.length > 3
+        ? `\n...e mais ${watchedItens.length - 3} itens`
+        : ''
+
+    const message = `*${empresa.nome}*\n\nOlá *${cliente}*,\nSegue resumo da sua OS *#${osNum}*:\n\n*Veículo:* ${modelo}\n\n*Itens:*\n${itemsSummary}${moreItems}\n\n*Valor Total: ${formatCurrency(totalGeral)}*\n\nQualquer dúvida estamos à disposição!`
+
+    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Print View */}
-      <div className="hidden print:block bg-white text-black p-8">
-        <div className="flex justify-between items-start mb-6 border-b border-black pb-4">
-          <div className="flex gap-4 items-center">
-            {empresa.logo && (
-              <img
-                src={empresa.logo}
-                alt="Logo"
-                className="h-16 w-auto object-contain"
-              />
+      {/* 
+        ========================================
+        PRINT LAYOUTS
+        ========================================
+      */}
+      <div className="hidden print:block text-black font-sans">
+        {printMode === 'cupom' ? (
+          // 80mm THERMAL RECEIPT LAYOUT
+          <div className="w-[80mm] text-[12px] leading-tight p-2">
+            <div className="text-center border-b border-black pb-2 mb-2">
+              <h2 className="font-bold text-sm uppercase">{empresa.nome}</h2>
+              <p className="text-[10px]">{empresa.telefone}</p>
+            </div>
+            <div className="mb-2">
+              <p>
+                <strong>OS:</strong> #
+                {existing ? formatContractId(existing.numeroOS) : '---'}
+              </p>
+              <p>
+                <strong>Data:</strong>{' '}
+                {new Date(form.getValues('dataEntrada')).toLocaleDateString()}
+              </p>
+              <p className="truncate">
+                <strong>Cli:</strong> {form.getValues('clienteNome')}
+              </p>
+              <p className="truncate">
+                <strong>Moto:</strong> {form.getValues('motoModelo')}
+              </p>
+            </div>
+            <div className="border-b border-black mb-2" />
+            <div className="space-y-1 mb-2">
+              {watchedItens.map((item, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span className="truncate w-[60%]">
+                    {item.quantidade}x {item.nome}
+                  </span>
+                  <span>{formatCurrency(item.valorTotal)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-black pt-1 mb-2">
+              {totalDesconto > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span>Desconto:</span>
+                  <span>- {formatCurrency(totalDesconto)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-sm">
+                <span>TOTAL:</span>
+                <span>{formatCurrency(totalGeral)}</span>
+              </div>
+            </div>
+            <div className="text-center text-[10px] mt-4">
+              <p>Obrigado pela preferência!</p>
+            </div>
+          </div>
+        ) : (
+          // A4 LAYOUT (OS & ORÇAMENTO)
+          <div className="p-8 w-[210mm] min-h-[297mm] relative flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-6 border-b-2 border-black pb-4">
+              <div className="flex gap-4 items-center">
+                {empresa.logo && (
+                  <img
+                    src={empresa.logo}
+                    alt="Logo"
+                    className="h-20 w-auto object-contain"
+                  />
+                )}
+                <div>
+                  <h1 className="text-2xl font-bold uppercase">
+                    {empresa.nome}
+                  </h1>
+                  <p className="text-sm text-gray-600 max-w-xs leading-snug">
+                    {empresa.endereco}
+                  </p>
+                  <p className="text-sm font-bold mt-1">
+                    CNPJ: {empresa.cnpj || '00.000.000/0000-00'}
+                  </p>
+                  <p className="text-sm font-bold">{empresa.telefone}</p>
+                </div>
+              </div>
+              <div className="text-right flex flex-col items-end">
+                <h2 className="text-3xl font-black uppercase tracking-wider mb-2">
+                  {printMode === 'orcamento' ? 'ORÇAMENTO' : 'ORDEM DE SERVIÇO'}
+                </h2>
+                <div className="bg-gray-100 p-2 rounded w-full text-right mb-2">
+                  <p className="text-lg font-bold">
+                    Nº {existing ? formatContractId(existing.numeroOS) : '---'}
+                  </p>
+                  <p className="text-xs">
+                    Emissão: {new Date().toLocaleDateString()}
+                  </p>
+                </div>
+                {/* Generated QR Code for website */}
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://www.fenixmoto.com.br`}
+                  alt="QR Code"
+                  className="w-20 h-20 border border-gray-200"
+                />
+                <span className="text-[10px] text-gray-500 mt-1">
+                  Acesse nosso site
+                </span>
+              </div>
+            </div>
+
+            {/* Info Section */}
+            <div className="grid grid-cols-2 gap-8 mb-6 text-sm bg-gray-50 p-4 rounded border border-gray-200">
+              <div>
+                <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                  Dados do Cliente
+                </h3>
+                <p className="py-0.5">
+                  <span className="font-semibold w-20 inline-block">Nome:</span>{' '}
+                  {form.getValues('clienteNome')}
+                </p>
+                <p className="py-0.5">
+                  <span className="font-semibold w-20 inline-block">Tel:</span>{' '}
+                  {form.getValues('clienteTelefone')}
+                </p>
+              </div>
+              <div>
+                <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                  Dados do Veículo
+                </h3>
+                <p className="py-0.5">
+                  <span className="font-semibold w-20 inline-block">
+                    Modelo:
+                  </span>{' '}
+                  {form.getValues('motoModelo')}
+                </p>
+                <p className="py-0.5">
+                  <span className="font-semibold w-20 inline-block">
+                    Placa:
+                  </span>{' '}
+                  <span className="uppercase font-mono bg-gray-200 px-1 rounded">
+                    {form.getValues('motoPlaca')}
+                  </span>
+                </p>
+                <p className="py-0.5">
+                  <span className="font-semibold w-20 inline-block">Ano:</span>{' '}
+                  {form.getValues('motoAno') || '-'}
+                </p>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="flex-1">
+              <table className="w-full mb-6 text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-100 border-y border-black">
+                    <th className="text-left py-2 px-2 font-bold uppercase text-xs">
+                      Tipo
+                    </th>
+                    <th className="text-left py-2 px-2 font-bold uppercase text-xs">
+                      Descrição
+                    </th>
+                    <th className="text-center py-2 px-2 font-bold uppercase text-xs w-16">
+                      Qtd
+                    </th>
+                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-24">
+                      V. Unit
+                    </th>
+                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-20">
+                      Desc(%)
+                    </th>
+                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-28">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {watchedItens.map((item, idx) => (
+                    <tr
+                      key={idx}
+                      className="border-b border-gray-200 hover:bg-gray-50"
+                    >
+                      <td className="py-2 px-2 capitalize text-xs text-gray-500">
+                        {item.tipo}
+                      </td>
+                      <td className="py-2 px-2 font-medium">{item.nome}</td>
+                      <td className="text-center py-2 px-2">
+                        {item.quantidade}
+                      </td>
+                      <td className="text-right py-2 px-2 text-gray-600">
+                        {formatCurrency(item.valorUnitario)}
+                      </td>
+                      <td className="text-right py-2 px-2 text-gray-600">
+                        {item.desconto > 0 ? `${item.desconto}%` : '-'}
+                      </td>
+                      <td className="text-right py-2 px-2 font-bold">
+                        {formatCurrency(item.valorTotal)}
+                      </td>
+                    </tr>
+                  ))}
+                  {watchedItens.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="py-8 text-center text-gray-400 italic"
+                      >
+                        Nenhum item adicionado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals Section */}
+            <div className="flex justify-end mb-8">
+              <div className="w-1/2 bg-gray-50 p-4 rounded border border-gray-200">
+                <div className="flex justify-between py-1 text-sm text-gray-600">
+                  <span>Total Peças:</span>
+                  <span>{formatCurrency(totalPecas)}</span>
+                </div>
+                <div className="flex justify-between py-1 text-sm text-gray-600">
+                  <span>Total Serviços:</span>
+                  <span>{formatCurrency(totalServicos)}</span>
+                </div>
+                {totalDesconto > 0 && (
+                  <div className="flex justify-between py-1 text-sm text-emerald-600 font-medium border-t border-gray-200 mt-1">
+                    <span>Total Desconto:</span>
+                    <span>- {formatCurrency(totalDesconto)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-xl font-black mt-2 pt-2 border-t-2 border-black">
+                  <span>TOTAL GERAL:</span>
+                  <span>{formatCurrency(totalGeral)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Observations */}
+            {form.getValues('observacao') && (
+              <div className="mb-8 border border-gray-200 rounded p-4 bg-yellow-50/50">
+                <h3 className="font-bold mb-1 text-xs uppercase text-gray-500">
+                  Observações:
+                </h3>
+                <p className="whitespace-pre-wrap text-sm">
+                  {form.getValues('observacao')}
+                </p>
+              </div>
             )}
-            <div>
-              <h1 className="text-2xl font-bold uppercase">{empresa.nome}</h1>
-              <p className="text-sm">{empresa.endereco}</p>
-              <p className="text-sm font-bold">{empresa.telefone}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <h2 className="text-xl font-bold">ORDEM DE SERVIÇO</h2>
-            <p className="text-lg">
-              Nº {existing ? formatContractId(existing.numeroOS) : '---'}
-            </p>
-            <p className="text-sm">
-              Data:{' '}
-              {new Date(form.getValues('dataEntrada')).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
-          <div>
-            <h3 className="font-bold border-b border-black mb-2 uppercase">
-              Cliente
-            </h3>
-            <p>
-              <span className="font-semibold">Nome:</span>{' '}
-              {form.getValues('clienteNome')}
-            </p>
-            <p>
-              <span className="font-semibold">Telefone:</span>{' '}
-              {form.getValues('clienteTelefone')}
-            </p>
-          </div>
-          <div>
-            <h3 className="font-bold border-b border-black mb-2 uppercase">
-              Veículo
-            </h3>
-            <p>
-              <span className="font-semibold">Modelo:</span>{' '}
-              {form.getValues('motoModelo')}
-            </p>
-            <p>
-              <span className="font-semibold">Placa:</span>{' '}
-              {form.getValues('motoPlaca')}
-            </p>
-          </div>
-        </div>
-
-        <table className="w-full mb-6 text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-black">
-              <th className="text-left py-2">Descrição</th>
-              <th className="text-center py-2 w-16">Qtd</th>
-              <th className="text-right py-2 w-24">Valor Unit.</th>
-              <th className="text-right py-2 w-24">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {watchedItens.map((item, idx) => (
-              <tr key={idx} className="border-b border-gray-200">
-                <td className="py-2">{item.nome}</td>
-                <td className="text-center py-2">{item.quantidade}</td>
-                <td className="text-right py-2">
-                  {formatCurrency(item.valorUnitario)}
-                </td>
-                <td className="text-right py-2 font-bold">
-                  {formatCurrency(item.valorTotal)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="flex justify-end mb-8">
-          <div className="w-1/2 space-y-2 text-sm">
-            <div className="flex justify-between border-b border-gray-300 pb-1">
-              <span>Total Peças:</span>
-              <span>{formatCurrency(totalPecas)}</span>
+            {/* Signatures */}
+            <div className="mt-auto grid grid-cols-2 gap-16 text-center text-sm pt-8">
+              <div>
+                <div className="border-t border-black mb-2" />
+                <p className="font-medium">{empresa.nome}</p>
+                <p className="text-xs text-gray-500">Responsável Técnico</p>
+              </div>
+              <div>
+                <div className="border-t border-black mb-2" />
+                <p className="font-medium">
+                  {form.getValues('clienteNome') || 'Cliente'}
+                </p>
+                <p className="text-xs text-gray-500">Assinatura do Cliente</p>
+              </div>
             </div>
-            <div className="flex justify-between border-b border-gray-300 pb-1">
-              <span>Total Serviços:</span>
-              <span>{formatCurrency(totalServicos)}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold mt-2">
-              <span>TOTAL GERAL:</span>
-              <span>{formatCurrency(totalGeral)}</span>
-            </div>
-          </div>
-        </div>
 
-        {form.getValues('observacao') && (
-          <div className="mb-8">
-            <h3 className="font-bold border-b border-black mb-2">
-              OBSERVAÇÕES
-            </h3>
-            <p className="whitespace-pre-wrap text-sm">
-              {form.getValues('observacao')}
-            </p>
+            {/* Footer / Recycling Message */}
+            <div className="mt-8 pt-4 border-t border-gray-200 text-center flex flex-col items-center gap-1 text-xs text-gray-400">
+              <div className="flex items-center gap-1 text-green-700/80 font-medium">
+                <Recycle className="h-3 w-3" />
+                <span>
+                  Por favor, descarte este papel de forma consciente. Recicle.
+                </span>
+              </div>
+              <p>Gerado por MotoFin System • {empresa.website}</p>
+            </div>
           </div>
         )}
-
-        <div className="mt-auto pt-16 grid grid-cols-2 gap-16 text-center text-sm">
-          <div className="border-t border-black pt-2">
-            <p>Assinatura {empresa.nome}</p>
-          </div>
-          <div className="border-t border-black pt-2">
-            <p>Assinatura Cliente</p>
-          </div>
-        </div>
       </div>
 
-      <Card className="print:hidden">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>
-            {isEditing
-              ? `Editando OS #${existing ? formatContractId(existing.numeroOS) : ''}`
-              : 'Nova Ordem de Serviço'}
-          </CardTitle>
+      {/* 
+        ========================================
+        SCREEN LAYOUT
+        ========================================
+      */}
+      <Card className="print:hidden border-t-4 border-t-primary shadow-lg">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-muted/20">
+          <div>
+            <CardTitle className="text-2xl flex items-center gap-2">
+              {isEditing
+                ? `OS #${existing ? formatContractId(existing.numeroOS) : ''}`
+                : 'Nova Ordem de Serviço'}
+              {isEditing && existing && (
+                <span
+                  className={cn(
+                    'text-sm px-2 py-0.5 rounded-full border',
+                    existing.situacao === 'Concluído'
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                      : 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                  )}
+                >
+                  {existing.situacao}
+                </span>
+              )}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Preencha os dados abaixo para gerar a OS.
+            </p>
+          </div>
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              title="SMS"
-              onClick={handleSMS}
-            >
-              <MessageSquare className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              title="WhatsApp"
+              title="Enviar no WhatsApp"
               onClick={handleWhatsApp}
+              className="hover:text-green-600 hover:border-green-600"
             >
-              <MessageCircle className="h-4 w-4 text-green-600" />
+              <MessageCircle className="h-5 w-5" />
             </Button>
-            <Button type="button" variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" /> Imprimir
-            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline">
+                  <Printer className="mr-2 h-4 w-4" /> Imprimir
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56" align="end">
+                <div className="flex flex-col gap-1">
+                  <Button
+                    variant="ghost"
+                    className="justify-start font-normal"
+                    onClick={() => handlePrint('os')}
+                  >
+                    <FileOutput className="mr-2 h-4 w-4" /> Ordem de Serviço
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="justify-start font-normal"
+                    onClick={() => handlePrint('orcamento')}
+                  >
+                    <FileText className="mr-2 h-4 w-4" /> Orçamento
+                  </Button>
+                  <Separator className="my-1" />
+                  <Button
+                    variant="ghost"
+                    className="justify-start font-normal"
+                    onClick={() => handlePrint('cupom')}
+                  >
+                    <Receipt className="mr-2 h-4 w-4" /> Cupom (80mm)
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* Header Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 bg-muted/30 rounded-lg border border-border/50">
                 <div className="flex flex-col space-y-2">
-                  <FormLabel>Cliente</FormLabel>
-                  <Popover
-                    open={openClientSearch}
-                    onOpenChange={setOpenClientSearch}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={openClientSearch}
-                        className="justify-between w-full"
-                      >
-                        {form.watch('clienteNome') || 'Selecione um cliente...'}
-                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Buscar cliente..." />
-                        <CommandList>
-                          <CommandEmpty>
-                            Nenhum cliente encontrado.
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {clientes
-                              .sort((a, b) => a.nome.localeCompare(b.nome))
-                              .map((cliente) => (
-                                <CommandItem
-                                  key={cliente.id}
-                                  value={cliente.nome}
-                                  onSelect={() =>
-                                    handleClienteSelect(cliente.id)
-                                  }
-                                >
-                                  <Check
-                                    className={cn(
-                                      'mr-2 h-4 w-4',
-                                      form.watch('clienteId') === cliente.id
-                                        ? 'opacity-100'
-                                        : 'opacity-0',
-                                    )}
-                                  />
-                                  {cliente.nome}
-                                </CommandItem>
-                              ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <FormLabel className="font-semibold">Cliente</FormLabel>
+                  <div className="flex gap-2">
+                    <Popover
+                      open={openClientSearch}
+                      onOpenChange={setOpenClientSearch}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openClientSearch}
+                          className="justify-between w-full"
+                        >
+                          {form.watch('clienteNome') ||
+                            'Selecione um cliente...'}
+                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar cliente..." />
+                          <CommandList>
+                            <CommandEmpty>
+                              Nenhum cliente encontrado.
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {clientes
+                                .sort((a, b) => a.nome.localeCompare(b.nome))
+                                .map((cliente) => (
+                                  <CommandItem
+                                    key={cliente.id}
+                                    value={cliente.nome}
+                                    onSelect={() =>
+                                      handleClienteSelect(cliente.id)
+                                    }
+                                  >
+                                    <Check
+                                      className={cn(
+                                        'mr-2 h-4 w-4',
+                                        form.watch('clienteId') === cliente.id
+                                          ? 'opacity-100'
+                                          : 'opacity-0',
+                                      )}
+                                    />
+                                    {cliente.nome}
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                   <Input
                     placeholder="Nome do Cliente (Manual)"
                     {...form.register('clienteNome')}
@@ -542,13 +731,16 @@ export default function OrdemServicoForm() {
                   name="clienteTelefone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Celular / Telefone</FormLabel>
+                      <FormLabel className="font-semibold">
+                        Celular / WhatsApp
+                      </FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           onChange={(e) =>
                             field.onChange(formatPhone(e.target.value))
                           }
+                          placeholder="(00) 00000-0000"
                         />
                       </FormControl>
                       <FormMessage />
@@ -561,14 +753,14 @@ export default function OrdemServicoForm() {
                   name="vendedorId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Vendedor</FormLabel>
+                      <FormLabel className="font-semibold">Vendedor</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
+                            <SelectValue placeholder="Responsável" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -594,7 +786,9 @@ export default function OrdemServicoForm() {
                   name="motoModelo"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Modelo da Moto</FormLabel>
+                      <FormLabel className="font-semibold">
+                        Modelo da Moto
+                      </FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="Ex: Honda CG 160" />
                       </FormControl>
@@ -608,9 +802,13 @@ export default function OrdemServicoForm() {
                   name="motoPlaca"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Placa</FormLabel>
+                      <FormLabel className="font-semibold">Placa</FormLabel>
                       <FormControl>
-                        <Input {...field} className="uppercase" />
+                        <Input
+                          {...field}
+                          className="uppercase font-mono"
+                          placeholder="ABC-1234"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -622,7 +820,7 @@ export default function OrdemServicoForm() {
                   name="situacao"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Situação</FormLabel>
+                      <FormLabel className="font-semibold">Situação</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
@@ -647,14 +845,15 @@ export default function OrdemServicoForm() {
                 />
               </div>
 
-              <Separator />
-
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold text-lg">Itens da OS</h3>
-                  <div className="flex gap-2">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                  <h3 className="font-bold text-xl flex items-center gap-2">
+                    <Wrench className="h-5 w-5 text-muted-foreground" /> Itens
+                    da OS
+                  </h3>
+                  <div className="flex w-full md:w-auto gap-2">
                     <Select onValueChange={(val) => addItem('peca', val)}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="flex-1 md:w-[200px] border-dashed border-primary/50 hover:bg-primary/5">
                         <SelectValue placeholder="+ Adicionar Peça" />
                       </SelectTrigger>
                       <SelectContent>
@@ -668,7 +867,7 @@ export default function OrdemServicoForm() {
                       </SelectContent>
                     </Select>
                     <Select onValueChange={(val) => addItem('servico', val)}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="flex-1 md:w-[200px] border-dashed border-primary/50 hover:bg-primary/5">
                         <SelectValue placeholder="+ Adicionar Serviço" />
                       </SelectTrigger>
                       <SelectContent>
@@ -682,30 +881,41 @@ export default function OrdemServicoForm() {
                   </div>
                 </div>
 
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted">
                       <TableRow>
                         <TableHead>Tipo</TableHead>
-                        <TableHead>Item</TableHead>
+                        <TableHead>Descrição</TableHead>
                         <TableHead className="w-[80px]">Qtd</TableHead>
-                        <TableHead className="w-[120px]">Unitário</TableHead>
-                        <TableHead className="w-[100px]">Desc(%)</TableHead>
-                        <TableHead className="w-[120px]">Total</TableHead>
+                        <TableHead className="w-[120px] text-right">
+                          Unitário
+                        </TableHead>
+                        <TableHead className="w-[100px] text-right">
+                          Desc(%)
+                        </TableHead>
+                        <TableHead className="w-[140px] text-right">
+                          Total
+                        </TableHead>
                         <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {fields.map((field, index) => (
-                        <TableRow key={field.id}>
-                          <TableCell className="capitalize">
+                        <TableRow key={field.id} className="group">
+                          <TableCell className="capitalize text-xs text-muted-foreground">
                             {form.getValues(`itens.${index}.tipo`)}
                           </TableCell>
                           <TableCell>
                             <FormField
                               control={form.control}
                               name={`itens.${index}.nome`}
-                              render={({ field }) => <Input {...field} />}
+                              render={({ field }) => (
+                                <Input
+                                  {...field}
+                                  className="h-8 bg-transparent border-transparent group-hover:bg-background group-hover:border-input"
+                                />
+                              )}
                             />
                           </TableCell>
                           <TableCell>
@@ -717,6 +927,7 @@ export default function OrdemServicoForm() {
                                   type="number"
                                   min={1}
                                   {...field}
+                                  className="h-8 text-center"
                                   onChange={(e) => {
                                     field.onChange(e)
                                     const qty = Number(e.target.value)
@@ -745,6 +956,7 @@ export default function OrdemServicoForm() {
                                 <Input
                                   {...field}
                                   type="number"
+                                  className="h-8 text-right"
                                   onChange={(e) => {
                                     field.onChange(e)
                                     const unit = Number(e.target.value)
@@ -775,6 +987,7 @@ export default function OrdemServicoForm() {
                                   min={0}
                                   max={100}
                                   {...field}
+                                  className="h-8 text-right text-red-600 font-medium"
                                   onChange={(e) => {
                                     field.onChange(e)
                                     const desc = Number(e.target.value)
@@ -801,16 +1014,17 @@ export default function OrdemServicoForm() {
                                 form.watch(`itens.${index}.valorTotal`),
                               )}
                               readOnly
-                              className="bg-muted"
+                              className="h-8 bg-muted text-right font-bold pointer-events-none"
                             />
                           </TableCell>
                           <TableCell>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
                               onClick={() => remove(index)}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -819,9 +1033,12 @@ export default function OrdemServicoForm() {
                         <TableRow>
                           <TableCell
                             colSpan={7}
-                            className="text-center h-24 text-muted-foreground"
+                            className="text-center h-32 text-muted-foreground bg-muted/5 border-dashed"
                           >
-                            Adicione itens à ordem de serviço.
+                            <div className="flex flex-col items-center gap-2">
+                              <Package className="h-8 w-8 opacity-20" />
+                              <p>Adicione peças ou serviços acima.</p>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -829,31 +1046,43 @@ export default function OrdemServicoForm() {
                   </Table>
                 </div>
 
-                <div className="flex justify-end gap-8 text-sm p-4 bg-muted/20 rounded-lg">
-                  <div className="text-right">
-                    <p className="text-muted-foreground">Total Peças</p>
-                    <p className="font-semibold">
-                      {formatCurrency(totalPecas)}
-                    </p>
+                <div className="flex flex-col md:flex-row justify-end gap-6 text-sm p-6 bg-muted/30 rounded-lg border border-border/50 shadow-sm">
+                  <div className="flex gap-8 justify-end">
+                    <div className="text-right space-y-1">
+                      <p className="text-muted-foreground">Total Peças</p>
+                      <p className="font-semibold text-lg">
+                        {formatCurrency(totalPecas)}
+                      </p>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <p className="text-muted-foreground">Total Serviços</p>
+                      <p className="font-semibold text-lg">
+                        {formatCurrency(totalServicos)}
+                      </p>
+                    </div>
+                    {totalDesconto > 0 && (
+                      <div className="text-right space-y-1">
+                        <p className="text-muted-foreground">Total Desconto</p>
+                        <p className="font-semibold text-lg text-emerald-600">
+                          - {formatCurrency(totalDesconto)}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-muted-foreground">Total Serviços</p>
-                    <p className="font-semibold">
-                      {formatCurrency(totalServicos)}
+                  <div className="text-right border-l pl-8 border-border">
+                    <p className="text-muted-foreground uppercase text-xs font-bold tracking-wider mb-1">
+                      Total Geral
                     </p>
-                  </div>
-                  <div className="text-right border-l pl-8">
-                    <p className="text-muted-foreground">Total Geral</p>
-                    <p className="text-xl font-bold text-primary">
+                    <p className="text-3xl font-black text-primary tracking-tight">
                       {formatCurrency(totalGeral)}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground px-2">
                   <Calculator className="h-3 w-3" />
                   <span>
-                    Comissão Estimada (Peças):{' '}
+                    Comissão Estimada (Vendedor):{' '}
                     <strong>{formatCurrency(totalComissao)}</strong>
                   </span>
                 </div>
@@ -864,16 +1093,20 @@ export default function OrdemServicoForm() {
                 name="observacao"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Observações</FormLabel>
+                    <FormLabel>Observações Gerais</FormLabel>
                     <FormControl>
-                      <Textarea {...field} />
+                      <Textarea
+                        {...field}
+                        placeholder="Detalhes adicionais, defeitos relatados, condições de pagamento..."
+                        className="min-h-[100px]"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="flex justify-end gap-4">
+              <div className="flex justify-end gap-4 border-t pt-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -881,11 +1114,19 @@ export default function OrdemServicoForm() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="min-w-[150px]"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Ordem de Serviço'
                   )}
-                  Salvar OS
                 </Button>
               </div>
             </form>

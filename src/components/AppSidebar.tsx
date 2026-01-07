@@ -32,7 +32,6 @@ export function AppSidebar() {
   const location = useLocation()
   const { empresa, currentUser, logout } = useData()
 
-  // Updated menu items to reflect "Ordem de Serviço" instead of Orçamentos
   const items = [
     { title: 'Dashboard', url: '/', icon: LayoutDashboard },
     { title: 'Motos', url: '/motos', icon: Bike },
@@ -45,12 +44,12 @@ export function AppSidebar() {
     },
     { title: 'Peças', url: '/pecas', icon: Package },
     { title: 'Serviços', url: '/servicos', icon: Wrench },
+    { title: 'Vendedores', url: '/vendedores', icon: Briefcase },
     { title: 'Empresa', url: '/empresa', icon: Building2 },
   ]
 
   const adminItems = [
     { title: 'Colaboradores', url: '/colaboradores', icon: UserCog },
-    { title: 'Vendedores', url: '/vendedores', icon: Briefcase },
     { title: 'Comissões', url: '/relatorios/comissoes', icon: BarChart3 },
   ]
 
