@@ -63,6 +63,7 @@ export default function FinanciamentoForm() {
   const isEditing = !!id
   const existingFinanciamento = financiamentos.find((f) => f.id === id)
 
+  // Wait for data if editing and not yet available
   const isLoading = isEditing && !existingFinanciamento
 
   const motosDisponiveis = motos.filter(
@@ -97,15 +98,23 @@ export default function FinanciamentoForm() {
   useEffect(() => {
     if (isEditing && existingFinanciamento) {
       setSelectedMotoId(existingFinanciamento.motoId)
+
+      // Sort parcels to find the first one accurately
+      const sortedParcels = [...existingFinanciamento.parcelas].sort(
+        (a, b) =>
+          new Date(a.dataVencimento).getTime() -
+          new Date(b.dataVencimento).getTime(),
+      )
+
       const parcelValue =
-        existingFinanciamento.parcelas.length > 0
-          ? existingFinanciamento.parcelas[0].valorOriginal
+        sortedParcels.length > 0
+          ? sortedParcels[0].valorOriginal
           : existingFinanciamento.valorFinanciado /
             existingFinanciamento.quantidadeParcelas
 
       const firstParcelDate =
-        existingFinanciamento.parcelas.length > 0
-          ? existingFinanciamento.parcelas[0].dataVencimento.split('T')[0]
+        sortedParcels.length > 0
+          ? sortedParcels[0].dataVencimento.split('T')[0]
           : defaultFirstInstallment
 
       form.reset({
@@ -122,6 +131,8 @@ export default function FinanciamentoForm() {
         observacao: existingFinanciamento.observacao || '',
         dataPrimeiraParcela: firstParcelDate,
       })
+      // Indicate manual parcel setting to prevent auto-recalculation overriding existing values immediately
+      setIsManualParcel(true)
     }
   }, [isEditing, existingFinanciamento, form])
 
@@ -203,7 +214,8 @@ export default function FinanciamentoForm() {
 
     const newParcelas = Array.from({ length: values.quantidadeParcelas }).map(
       (_, i) => {
-        const dueDate = addDays(firstDate, i * 30) // Assuming 30 days interval
+        // Generate installments starting from first date, 30 days interval
+        const dueDate = addDays(firstDate, i * 30)
         return {
           numero: i + 1,
           dataVencimento: dueDate.toISOString(),
@@ -337,7 +349,7 @@ export default function FinanciamentoForm() {
                           <SelectContent>
                             {clientes.map((c) => (
                               <SelectItem key={c.id} value={c.id}>
-                                {c.nome} - CPF: {c.cpf}
+                                {c.nome} - {c.telefone}
                               </SelectItem>
                             ))}
                           </SelectContent>

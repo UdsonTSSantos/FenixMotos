@@ -8,8 +8,8 @@ import {
   Building2,
   UserCog,
   Users,
+  AlertCircle,
 } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import {
   ChartContainer,
@@ -24,9 +24,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
+import { isBefore, parseISO, startOfDay } from 'date-fns'
 
 export default function Index() {
   const { motos, financiamentos, empresa, currentUser } = useData()
@@ -61,12 +61,20 @@ export default function Index() {
     },
   ]
 
-  // Recent Activity (Last 5 financiamentos)
-  const recentSales = [...financiamentos]
-    .sort(
-      (a, b) =>
-        new Date(b.dataContrato).getTime() - new Date(a.dataContrato).getTime(),
-    )
+  // Motos with Overdue Licensing (Status: Estoque)
+  const today = startOfDay(new Date())
+  const overdueLicensingMotos = motos
+    .filter((m) => {
+      if (m.status !== 'estoque') return false
+      if (!m.dataLicenciamento) return false
+      const licDate = parseISO(m.dataLicenciamento)
+      return isBefore(licDate, today)
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.dataLicenciamento || '').getTime()
+      const dateB = new Date(b.dataLicenciamento || '').getTime()
+      return dateA - dateB
+    })
     .slice(0, 5)
 
   // Check permissions for Collaborators button
@@ -200,47 +208,40 @@ export default function Index() {
           </Card>
 
           <Card className="flex-1">
-            <CardHeader>
-              <CardTitle>Vendas Recentes</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Licenciamento Vencido</CardTitle>
+              <AlertCircle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Contrato</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Placa</TableHead>
+                    <TableHead>Modelo</TableHead>
+                    <TableHead>Vencimento</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentSales.map((sale) => (
-                    <TableRow key={sale.id}>
-                      <TableCell className="font-medium">
-                        {new Date(sale.dataContrato).toLocaleDateString()}
+                  {overdueLicensingMotos.map((moto) => (
+                    <TableRow key={moto.id}>
+                      <TableCell className="font-mono font-bold uppercase text-destructive">
+                        {moto.placa || 'S/ Placa'}
                       </TableCell>
-                      <TableCell>{formatCurrency(sale.valorTotal)}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            sale.status === 'ativo'
-                              ? 'outline'
-                              : sale.status === 'quitado'
-                                ? 'secondary'
-                                : 'destructive'
-                          }
-                        >
-                          {sale.status}
-                        </Badge>
+                      <TableCell>{moto.modelo}</TableCell>
+                      <TableCell className="text-destructive">
+                        {new Date(
+                          moto.dataLicenciamento || '',
+                        ).toLocaleDateString()}
                       </TableCell>
                     </TableRow>
                   ))}
-                  {recentSales.length === 0 && (
+                  {overdueLicensingMotos.length === 0 && (
                     <TableRow>
                       <TableCell
                         colSpan={3}
                         className="text-center text-muted-foreground"
                       >
-                        Nenhuma venda recente.
+                        Nenhum licenciamento vencido.
                       </TableCell>
                     </TableRow>
                   )}

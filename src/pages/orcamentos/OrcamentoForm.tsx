@@ -34,6 +34,7 @@ import {
   MessageCircle,
   Mail,
   Loader2,
+  Recycle,
 } from 'lucide-react'
 import {
   Table,
@@ -302,7 +303,7 @@ export default function OrcamentoForm() {
     setPrintMode(mode)
     setTimeout(() => {
       window.print()
-      setPrintMode('none')
+      // setPrintMode('none') // Optional: Keep view for checking
     }, 100)
   }
 
@@ -369,169 +370,220 @@ export default function OrcamentoForm() {
       .join(' | ')
 
     return (
-      <div className="bg-white text-black p-8 min-h-screen font-sans print:p-0 print:m-0 print:w-full">
-        {/* Header */}
-        <div className="pb-4 flex justify-between items-start mb-6">
-          <div className="flex gap-4 items-center">
-            {empresa.logo && (
-              <img
-                src={empresa.logo}
-                alt="Logo"
-                className="h-20 w-auto object-contain"
-              />
-            )}
-            <div>
-              <h1 className="text-2xl font-bold uppercase">{empresa.nome}</h1>
-              <p className="text-sm">{empresa.endereco}</p>
-              <p className="text-sm font-bold mt-1">{phones}</p>
+      <div className="bg-white text-black font-sans bg-white h-auto p-0 m-0">
+        <div className="w-full max-w-[210mm] mx-auto p-8 h-[297mm] relative flex flex-col">
+          {/* Header */}
+          <div className="pb-4 flex justify-between items-start mb-6 border-b-2 border-black">
+            <div className="flex gap-4 items-center">
+              {empresa.logo && (
+                <img
+                  src={empresa.logo}
+                  alt="Logo"
+                  className="h-20 w-auto object-contain"
+                />
+              )}
+              <div>
+                <h1 className="text-2xl font-bold uppercase">{empresa.nome}</h1>
+                <p className="text-sm">{empresa.endereco}</p>
+                <p className="text-sm font-bold mt-1">
+                  CNPJ: {empresa.cnpj || '00.000.000/0000-00'}
+                </p>
+                <p className="text-sm font-bold">{phones}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold uppercase">
+                {isQuote ? 'ORÇAMENTO' : 'ORDEM DE SERVIÇO'}
+              </h2>
+              <div className="bg-gray-100 p-2 rounded w-full text-right mt-2">
+                <p className="text-lg font-bold">
+                  Nº:{' '}
+                  {existing
+                    ? existing.id.substring(0, 8).toUpperCase()
+                    : 'NOVO'}
+                </p>
+                <p className="text-sm">
+                  Data: {new Date(form.getValues('data')).toLocaleDateString()}
+                </p>
+              </div>
             </div>
           </div>
-          <div className="text-right">
-            <h2 className="text-xl font-bold">
-              {isQuote ? 'ORÇAMENTO' : 'ORDEM DE SERVIÇO'}
-            </h2>
-            <p className="text-sm font-medium">
-              Nº:{' '}
-              {existing ? existing.id.substring(0, 8).toUpperCase() : 'NOVO'}
-            </p>
-            <p className="text-sm">
-              Data: {new Date(form.getValues('data')).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
 
-        {/* Info Grid */}
-        <div className="grid grid-cols-2 gap-8 mb-6 text-sm">
-          <div>
-            <h3 className="font-bold border-b border-black mb-2 uppercase">
-              Cliente
-            </h3>
-            <p>
-              <span className="font-semibold">Nome:</span>{' '}
-              {form.getValues('clienteNome')}
-            </p>
-            <p>
-              <span className="font-semibold">Telefone:</span>{' '}
-              {form.getValues('clienteTelefone')}
-            </p>
+          {/* Info Grid */}
+          <div className="grid grid-cols-2 gap-8 mb-6 text-sm bg-gray-50 p-4 rounded border border-gray-200">
+            <div>
+              <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                Cliente
+              </h3>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Nome:</span>{' '}
+                {form.getValues('clienteNome')}
+              </p>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Tel:</span>{' '}
+                {form.getValues('clienteTelefone')}
+              </p>
+            </div>
+            <div>
+              <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                Veículo / Vendedor
+              </h3>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Modelo:</span>{' '}
+                {form.getValues('motoModelo')}
+              </p>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Placa:</span>{' '}
+                <span className="uppercase font-mono bg-gray-200 px-1 rounded">
+                  {form.getValues('motoPlaca')}
+                </span>
+                {form.getValues('motoAno') && ` - ${form.getValues('motoAno')}`}
+              </p>
+              <p className="py-0.5 mt-1">
+                <span className="font-semibold w-20 inline-block">Vend:</span>{' '}
+                {vendedor?.nome}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold border-b border-black mb-2 uppercase">
-              Veículo / Vendedor
-            </h3>
-            <p>
-              <span className="font-semibold">Modelo:</span>{' '}
-              {form.getValues('motoModelo')}
-            </p>
-            <p>
-              <span className="font-semibold">Placa:</span>{' '}
-              {form.getValues('motoPlaca')}{' '}
-              {form.getValues('motoAno') && `- ${form.getValues('motoAno')}`}
-            </p>
-            <p className="mt-2">
-              <span className="font-semibold">Vendedor:</span> {vendedor?.nome}
-            </p>
-          </div>
-        </div>
 
-        {/* Items Table */}
-        <table className="w-full mb-6 text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-black">
-              <th className="text-left py-2">Descrição</th>
-              <th className="text-center py-2 w-16">Qtd</th>
-              {isQuote && (
-                <>
-                  <th className="text-right py-2 w-24">Valor Unit.</th>
-                  <th className="text-right py-2 w-20">Desc(%)</th>
-                  <th className="text-right py-2 w-24">Total</th>
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {watchedItens.map((item, idx) => (
-              <tr key={idx} className="border-b border-gray-200">
-                <td className="py-2">{item.nome}</td>
-                <td className="text-center py-2">{item.quantidade}</td>
+          {/* Items Table */}
+          <table className="w-full mb-6 text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-100 border-y border-black">
+                <th className="text-left py-2 px-2 font-bold uppercase text-xs">
+                  Descrição
+                </th>
+                <th className="text-center py-2 px-2 font-bold uppercase text-xs w-16">
+                  Qtd
+                </th>
                 {isQuote && (
                   <>
-                    <td className="text-right py-2">
-                      {formatCurrency(item.valorUnitario)}
-                    </td>
-                    <td className="text-right py-2">
-                      {item.desconto > 0 ? `${item.desconto}%` : '-'}
-                    </td>
-                    <td className="text-right py-2 font-medium">
-                      {formatCurrency(item.valorTotal)}
-                    </td>
+                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-24">
+                      V. Unit
+                    </th>
+                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-20">
+                      Desc(%)
+                    </th>
+                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-28">
+                      Total
+                    </th>
                   </>
                 )}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {watchedItens.map((item, idx) => (
+                <tr
+                  key={idx}
+                  className="border-b border-gray-200 hover:bg-gray-50"
+                >
+                  <td className="py-2 px-2 font-medium">{item.nome}</td>
+                  <td className="text-center py-2 px-2">{item.quantidade}</td>
+                  {isQuote && (
+                    <>
+                      <td className="text-right py-2 px-2 text-gray-600">
+                        {formatCurrency(item.valorUnitario)}
+                      </td>
+                      <td className="text-right py-2 px-2 text-gray-600">
+                        {item.desconto > 0 ? `${item.desconto}%` : '-'}
+                      </td>
+                      <td className="text-right py-2 px-2 font-bold">
+                        {formatCurrency(item.valorTotal)}
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+              {watchedItens.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={isQuote ? 5 : 2}
+                    className="py-8 text-center text-gray-400 italic"
+                  >
+                    Nenhum item adicionado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
 
-        {/* Totals & Conditions (Quote Only) */}
-        {isQuote && (
-          <div className="flex justify-end mb-8">
-            <div className="w-1/2 space-y-2 text-sm">
-              <div className="flex justify-between border-b border-gray-300 pb-1">
-                <span>Total Peças:</span>
-                <span>{formatCurrency(totalPecas)}</span>
-              </div>
-              <div className="flex justify-between border-b border-gray-300 pb-1">
-                <span>Total Serviços:</span>
-                <span>{formatCurrency(totalServicos)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-bold mt-2">
-                <span>TOTAL GERAL:</span>
-                <span>{formatCurrency(totalGeral)}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Terms & Warranty */}
-        <div className="grid grid-cols-2 gap-8 text-sm mb-8">
+          {/* Totals & Conditions (Quote Only) */}
           {isQuote && (
-            <div>
-              <h3 className="font-bold border-b border-black mb-2">
-                CONDIÇÕES
-              </h3>
-              <p>
-                <strong>Forma de Pagamento:</strong>{' '}
-                {form.getValues('formaPagamento')}
-              </p>
-              <p>
-                <strong>Garantia Peças:</strong>{' '}
-                {form.getValues('garantiaPecas')}
-              </p>
-              <p>
-                <strong>Garantia Serviços:</strong>{' '}
-                {form.getValues('garantiaServicos')}
-              </p>
+            <div className="flex justify-end mb-8">
+              <div className="w-1/2 bg-gray-50 p-4 rounded border border-gray-200">
+                <div className="flex justify-between py-1 text-sm text-gray-600">
+                  <span>Total Peças:</span>
+                  <span>{formatCurrency(totalPecas)}</span>
+                </div>
+                <div className="flex justify-between py-1 text-sm text-gray-600">
+                  <span>Total Serviços:</span>
+                  <span>{formatCurrency(totalServicos)}</span>
+                </div>
+                <div className="flex justify-between text-xl font-black mt-2 pt-2 border-t-2 border-black">
+                  <span>TOTAL GERAL:</span>
+                  <span>{formatCurrency(totalGeral)}</span>
+                </div>
+              </div>
             </div>
           )}
-          {form.getValues('observacao') && (
-            <div className={isQuote ? '' : 'col-span-2'}>
-              <h3 className="font-bold border-b border-black mb-2">
-                OBSERVAÇÕES
-              </h3>
-              <p className="whitespace-pre-wrap">
-                {form.getValues('observacao')}
-              </p>
-            </div>
-          )}
-        </div>
 
-        {/* Signatures */}
-        <div className="mt-auto pt-16 grid grid-cols-2 gap-16 text-center text-sm">
-          <div className="border-t border-black pt-2">
-            <p className="font-bold">{empresa.nome}</p>
+          {/* Terms & Warranty */}
+          <div className="grid grid-cols-2 gap-8 text-sm mb-8">
+            {isQuote && (
+              <div>
+                <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                  Condições
+                </h3>
+                <p>
+                  <span className="font-semibold">Pagamento:</span>{' '}
+                  {form.getValues('formaPagamento')}
+                </p>
+                <p>
+                  <span className="font-semibold">Garantia Peças:</span>{' '}
+                  {form.getValues('garantiaPecas')}
+                </p>
+                <p>
+                  <span className="font-semibold">Garantia Serviços:</span>{' '}
+                  {form.getValues('garantiaServicos')}
+                </p>
+              </div>
+            )}
+            {form.getValues('observacao') && (
+              <div className={isQuote ? '' : 'col-span-2'}>
+                <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                  Observações
+                </h3>
+                <p className="whitespace-pre-wrap text-gray-600">
+                  {form.getValues('observacao')}
+                </p>
+              </div>
+            )}
           </div>
-          <div className="border-t border-black pt-2">
-            <p className="font-bold">Cliente</p>
+
+          {/* Signatures */}
+          <div className="mt-auto grid grid-cols-2 gap-16 text-center text-sm pt-8">
+            <div>
+              <div className="border-t border-black mb-2" />
+              <p className="font-medium">{empresa.nome}</p>
+              <p className="text-xs text-gray-500">Responsável</p>
+            </div>
+            <div>
+              <div className="border-t border-black mb-2" />
+              <p className="font-medium">
+                {form.getValues('clienteNome') || 'Cliente'}
+              </p>
+              <p className="text-xs text-gray-500">Assinatura do Cliente</p>
+            </div>
+          </div>
+
+          {/* Footer / Recycling Message */}
+          <div className="mt-8 pt-4 border-t border-gray-200 text-center flex flex-col items-center gap-1 text-xs text-gray-400">
+            <div className="flex items-center gap-1 text-green-700/80 font-medium">
+              <Recycle className="h-3 w-3" />
+              <span>
+                Por favor, descarte este papel de forma consciente. Recicle.
+              </span>
+            </div>
           </div>
         </div>
       </div>

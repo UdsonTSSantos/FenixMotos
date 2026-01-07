@@ -32,7 +32,7 @@ export default function Comissoes() {
     'none',
   )
 
-  // Filter completed OS (assuming commission is paid on completion)
+  // Filter completed OS
   const completedOS = ordensServico.filter((o) => o.situacao === 'Concluído')
 
   const filteredData = completedOS.filter((o) => {
@@ -54,9 +54,13 @@ export default function Comissoes() {
   })
 
   // Calculate totals for filtered data
-  // Now using the stored comissaoVendedor field from the DB which is accurate per OS
+  // Logic: 3% commission specifically on parts (Peças)
+  const calculateCommission = (os: (typeof ordensServico)[0]) => {
+    return os.valorTotalPecas * 0.03
+  }
+
   const totalCommission = filteredData.reduce(
-    (acc, curr) => acc + (curr.comissaoVendedor || 0),
+    (acc, curr) => acc + calculateCommission(curr),
     0,
   )
 
@@ -69,14 +73,13 @@ export default function Comissoes() {
     setPrintMode(mode)
     setTimeout(() => {
       window.print()
-      setPrintMode('none')
+      // setPrintMode('none') // Optional: Keep view active
     }, 100)
   }
 
   const getGeneralReportData = () => {
     return vendedores
       .map((vend) => {
-        // Find OS for this seller within date range
         const osList = completedOS.filter((o) => {
           if (o.vendedorId !== vend.id) return false
           if (startDate && endDate) {
@@ -89,10 +92,7 @@ export default function Comissoes() {
         })
 
         const sales = osList.reduce((acc, o) => acc + o.valorTotal, 0)
-        const comm = osList.reduce(
-          (acc, o) => acc + (o.comissaoVendedor || 0),
-          0,
-        )
+        const comm = osList.reduce((acc, o) => acc + calculateCommission(o), 0)
 
         return {
           id: vend.id,
@@ -102,7 +102,7 @@ export default function Comissoes() {
           osCount: osList.length,
         }
       })
-      .filter((v) => v.totalSales > 0 || v.totalCommission > 0) // Only show active
+      .filter((v) => v.totalSales > 0 || v.totalCommission > 0)
   }
 
   const generalReportData = getGeneralReportData()
@@ -124,7 +124,7 @@ export default function Comissoes() {
     return (
       <div className="bg-white text-black p-8 min-h-screen font-sans print:p-0 print:m-0 print:w-full">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8 border-b border-black pb-4">
+        <div className="flex items-center gap-4 mb-8 border-b-2 border-black pb-4">
           {empresa.logo && (
             <img
               src={empresa.logo}
@@ -138,6 +138,9 @@ export default function Comissoes() {
               {printMode === 'individual'
                 ? 'Extrato de Comissões - Individual'
                 : 'Relatório Geral de Comissões'}
+            </p>
+            <p className="text-sm font-bold mt-1">
+              CNPJ: {empresa.cnpj || '00.000.000/0000-00'}
             </p>
           </div>
           <div className="ml-auto text-right text-sm">
@@ -169,7 +172,10 @@ export default function Comissoes() {
                     Total Venda
                   </th>
                   <th className="border border-black p-2 text-right">
-                    Comissão
+                    Total Peças
+                  </th>
+                  <th className="border border-black p-2 text-right">
+                    Comissão (3%)
                   </th>
                 </tr>
               </thead>
@@ -189,7 +195,10 @@ export default function Comissoes() {
                       {formatCurrency(item.valorTotal)}
                     </td>
                     <td className="border border-black p-2 text-right">
-                      {formatCurrency(item.comissaoVendedor)}
+                      {formatCurrency(item.valorTotalPecas)}
+                    </td>
+                    <td className="border border-black p-2 text-right font-medium">
+                      {formatCurrency(calculateCommission(item))}
                     </td>
                   </tr>
                 ))}
@@ -205,12 +214,44 @@ export default function Comissoes() {
                   <td className="border border-black p-2 text-right">
                     {formatCurrency(totalSales)}
                   </td>
+                  <td className="border border-black p-2 text-right">-</td>
                   <td className="border border-black p-2 text-right">
                     {formatCurrency(totalCommission)}
                   </td>
                 </tr>
               </tfoot>
             </table>
+
+            {/* Recibo Footer */}
+            <div className="mt-12 border-t-2 border-black border-dashed pt-8">
+              <h3 className="text-center font-bold text-lg mb-8 uppercase">
+                RECIBO DE PAGAMENTO DE COMISSÃO
+              </h3>
+              <p className="mb-8 text-justify leading-relaxed">
+                Eu, <strong>{selectedVendedorName}</strong>, declaro ter
+                recebido da empresa <strong>{empresa.nome}</strong> a
+                importância líquida de{' '}
+                <strong>{formatCurrency(totalCommission)}</strong> referente às
+                comissões sobre vendas de peças no período de{' '}
+                {startDate
+                  ? new Date(startDate).toLocaleDateString()
+                  : 'Início'}{' '}
+                a {endDate ? new Date(endDate).toLocaleDateString() : 'Hoje'}.
+              </p>
+              <div className="flex justify-between items-end mt-16 px-16">
+                <div className="text-center">
+                  <div className="border-t border-black w-64 mb-2"></div>
+                  <p className="font-bold">{empresa.nome}</p>
+                </div>
+                <div className="text-center">
+                  <div className="border-t border-black w-64 mb-2"></div>
+                  <p className="font-bold">{selectedVendedorName}</p>
+                </div>
+              </div>
+              <p className="text-center text-xs mt-8">
+                Data: ____/____/________
+              </p>
+            </div>
           </>
         )}
 
@@ -229,7 +270,7 @@ export default function Comissoes() {
                     Total Vendas
                   </th>
                   <th className="border border-black p-2 text-right">
-                    Total Comissões
+                    Total Comissões (Peças)
                   </th>
                 </tr>
               </thead>
@@ -276,14 +317,13 @@ export default function Comissoes() {
                 </tr>
               </tfoot>
             </table>
+            <div className="text-center text-sm pt-8 mt-12">
+              <p className="border-t border-black w-64 mx-auto pt-2">
+                Assinatura do Responsável
+              </p>
+            </div>
           </>
         )}
-
-        <div className="text-center text-sm pt-8 mt-12">
-          <p className="border-t border-black w-64 mx-auto pt-2">
-            Assinatura do Responsável
-          </p>
-        </div>
       </div>
     )
   }
@@ -395,7 +435,7 @@ export default function Comissoes() {
               <TableHead>Total Peças</TableHead>
               <TableHead>Total Serviços</TableHead>
               <TableHead>Total Geral</TableHead>
-              <TableHead className="text-right">Comissão</TableHead>
+              <TableHead className="text-right">Comissão (3%)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -418,7 +458,7 @@ export default function Comissoes() {
                     {formatCurrency(item.valorTotal)}
                   </TableCell>
                   <TableCell className="text-right font-bold text-emerald-600">
-                    {formatCurrency(item.comissaoVendedor)}
+                    {formatCurrency(calculateCommission(item))}
                   </TableCell>
                 </TableRow>
               )

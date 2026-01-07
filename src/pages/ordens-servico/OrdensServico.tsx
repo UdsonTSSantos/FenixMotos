@@ -27,11 +27,8 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export default function OrdensServico() {
-  const { ordensServico, usuarios, deleteOrdemServico } = useData()
+  const { ordensServico, deleteOrdemServico } = useData()
   const [filter, setFilter] = useState('')
-
-  const getVendedorName = (id: string) =>
-    usuarios.find((u) => u.id === id)?.nome || '?'
 
   const filteredOS = ordensServico.filter((os) => {
     return (
@@ -72,8 +69,6 @@ export default function OrdensServico() {
               <TableHead>Nº OS</TableHead>
               <TableHead>Data</TableHead>
               <TableHead>Cliente</TableHead>
-              <TableHead>Veículo</TableHead>
-              <TableHead>Vendedor</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -89,10 +84,6 @@ export default function OrdensServico() {
                   {new Date(os.dataEntrada).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="font-medium">{os.clienteNome}</TableCell>
-                <TableCell>
-                  {os.motoModelo} {os.motoPlaca ? `(${os.motoPlaca})` : ''}
-                </TableCell>
-                <TableCell>{getVendedorName(os.vendedorId)}</TableCell>
                 <TableCell>{formatCurrency(os.valorTotal)}</TableCell>
                 <TableCell>
                   <Badge
@@ -150,7 +141,7 @@ export default function OrdensServico() {
             {filteredOS.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={6}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhuma ordem de serviço encontrada.

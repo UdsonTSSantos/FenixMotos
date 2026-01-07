@@ -31,14 +31,10 @@ import {
   Search,
   Check,
   MessageCircle,
-  MessageSquare,
   Loader2,
-  Receipt,
-  FileOutput,
-  Recycle,
-  FileText,
   Wrench,
   Package,
+  Recycle,
 } from 'lucide-react'
 import {
   Table,
@@ -48,7 +44,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Separator } from '@/components/ui/separator'
 import {
   Command,
   CommandEmpty,
@@ -108,9 +103,6 @@ export default function OrdemServicoForm() {
   } = useData()
   const [openClientSearch, setOpenClientSearch] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [printMode, setPrintMode] = useState<
-    'none' | 'os' | 'orcamento' | 'cupom'
-  >('none')
 
   const isEditing = !!id
   const existing = ordensServico.find((o) => o.id === id)
@@ -239,7 +231,6 @@ export default function OrdemServicoForm() {
 
   const totalGeral = totalPecas + totalServicos
 
-  // Calculate dynamic commission (3% of parts)
   const totalComissao = watchedItens.reduce((acc, i) => {
     if (i.tipo === 'peca') {
       return acc + i.valorTotal * 0.03
@@ -247,7 +238,6 @@ export default function OrdemServicoForm() {
     return acc
   }, 0)
 
-  // Calculate Total Discount
   const totalDesconto = watchedItens.reduce((acc, i) => {
     const originalTotal = i.quantidade * i.valorUnitario
     const currentTotal = i.valorTotal
@@ -276,12 +266,8 @@ export default function OrdemServicoForm() {
     }
   }
 
-  const handlePrint = (mode: 'os' | 'orcamento' | 'cupom') => {
-    setPrintMode(mode)
-    setTimeout(() => {
-      window.print()
-      // Optional: setPrintMode('none') after print if preferred, but leaving it allows re-print
-    }, 300)
+  const handlePrint = () => {
+    window.print()
   }
 
   const handleWhatsApp = () => {
@@ -313,277 +299,206 @@ export default function OrdemServicoForm() {
     <div className="max-w-5xl mx-auto space-y-6">
       {/* 
         ========================================
-        PRINT LAYOUTS
+        PRINT LAYOUT (A4)
         ========================================
       */}
-      <div className="hidden print:block text-black font-sans">
-        {printMode === 'cupom' ? (
-          // 80mm THERMAL RECEIPT LAYOUT
-          <div className="w-[80mm] text-[12px] leading-tight p-2">
-            <div className="text-center border-b border-black pb-2 mb-2">
-              <h2 className="font-bold text-sm uppercase">{empresa.nome}</h2>
-              <p className="text-[10px]">{empresa.telefone}</p>
+      <div className="hidden print:block text-black font-sans bg-white h-auto p-0 m-0">
+        <div className="w-full max-w-[210mm] mx-auto p-8 h-[297mm] relative flex flex-col">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-6 border-b-2 border-black pb-4">
+            <div className="flex gap-4 items-center">
+              {empresa.logo && (
+                <img
+                  src={empresa.logo}
+                  alt="Logo"
+                  className="h-20 w-auto object-contain"
+                />
+              )}
+              <div>
+                <h1 className="text-2xl font-bold uppercase">{empresa.nome}</h1>
+                <p className="text-sm text-gray-600 max-w-xs leading-snug">
+                  {empresa.endereco}
+                </p>
+                <p className="text-sm font-bold mt-1">
+                  CNPJ: {empresa.cnpj || '00.000.000/0000-00'}
+                </p>
+                <p className="text-sm font-bold">{empresa.telefone}</p>
+              </div>
             </div>
-            <div className="mb-2">
-              <p>
-                <strong>OS:</strong> #
-                {existing ? formatContractId(existing.numeroOS) : '---'}
+            <div className="text-right flex flex-col items-end">
+              <h2 className="text-3xl font-black uppercase tracking-wider mb-2">
+                ORDEM DE SERVIÇO
+              </h2>
+              <div className="bg-gray-100 p-2 rounded w-full text-right mb-2">
+                <p className="text-lg font-bold">
+                  Nº {existing ? formatContractId(existing.numeroOS) : '---'}
+                </p>
+                <p className="text-xs">
+                  Emissão: {new Date().toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Info Section */}
+          <div className="grid grid-cols-2 gap-8 mb-6 text-sm bg-gray-50 p-4 rounded border border-gray-200">
+            <div>
+              <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                Dados do Cliente
+              </h3>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Nome:</span>{' '}
+                {form.getValues('clienteNome')}
               </p>
-              <p>
-                <strong>Data:</strong>{' '}
-                {new Date(form.getValues('dataEntrada')).toLocaleDateString()}
-              </p>
-              <p className="truncate">
-                <strong>Cli:</strong> {form.getValues('clienteNome')}
-              </p>
-              <p className="truncate">
-                <strong>Moto:</strong> {form.getValues('motoModelo')}
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Tel:</span>{' '}
+                {form.getValues('clienteTelefone')}
               </p>
             </div>
-            <div className="border-b border-black mb-2" />
-            <div className="space-y-1 mb-2">
-              {watchedItens.map((item, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span className="truncate w-[60%]">
-                    {item.quantidade}x {item.nome}
-                  </span>
-                  <span>{formatCurrency(item.valorTotal)}</span>
-                </div>
-              ))}
+            <div>
+              <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
+                Dados do Veículo
+              </h3>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Modelo:</span>{' '}
+                {form.getValues('motoModelo')}
+              </p>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Placa:</span>{' '}
+                <span className="uppercase font-mono bg-gray-200 px-1 rounded">
+                  {form.getValues('motoPlaca')}
+                </span>
+              </p>
+              <p className="py-0.5">
+                <span className="font-semibold w-20 inline-block">Ano:</span>{' '}
+                {form.getValues('motoAno') || '-'}
+              </p>
             </div>
-            <div className="border-t border-black pt-1 mb-2">
+          </div>
+
+          {/* Items Table */}
+          <div className="flex-1">
+            <table className="w-full mb-6 text-sm border-collapse">
+              <thead>
+                <tr className="bg-gray-100 border-y border-black">
+                  <th className="text-left py-2 px-2 font-bold uppercase text-xs">
+                    Tipo
+                  </th>
+                  <th className="text-left py-2 px-2 font-bold uppercase text-xs">
+                    Descrição
+                  </th>
+                  <th className="text-center py-2 px-2 font-bold uppercase text-xs w-16">
+                    Qtd
+                  </th>
+                  <th className="text-right py-2 px-2 font-bold uppercase text-xs w-24">
+                    V. Unit
+                  </th>
+                  <th className="text-right py-2 px-2 font-bold uppercase text-xs w-20">
+                    Desc(%)
+                  </th>
+                  <th className="text-right py-2 px-2 font-bold uppercase text-xs w-28">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {watchedItens.map((item, idx) => (
+                  <tr
+                    key={idx}
+                    className="border-b border-gray-200 hover:bg-gray-50"
+                  >
+                    <td className="py-2 px-2 capitalize text-xs text-gray-500">
+                      {item.tipo}
+                    </td>
+                    <td className="py-2 px-2 font-medium">{item.nome}</td>
+                    <td className="text-center py-2 px-2">{item.quantidade}</td>
+                    <td className="text-right py-2 px-2 text-gray-600">
+                      {formatCurrency(item.valorUnitario)}
+                    </td>
+                    <td className="text-right py-2 px-2 text-gray-600">
+                      {item.desconto > 0 ? `${item.desconto}%` : '-'}
+                    </td>
+                    <td className="text-right py-2 px-2 font-bold">
+                      {formatCurrency(item.valorTotal)}
+                    </td>
+                  </tr>
+                ))}
+                {watchedItens.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="py-8 text-center text-gray-400 italic"
+                    >
+                      Nenhum item adicionado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals Section */}
+          <div className="flex justify-end mb-8">
+            <div className="w-1/2 bg-gray-50 p-4 rounded border border-gray-200">
+              <div className="flex justify-between py-1 text-sm text-gray-600">
+                <span>Total Peças:</span>
+                <span>{formatCurrency(totalPecas)}</span>
+              </div>
+              <div className="flex justify-between py-1 text-sm text-gray-600">
+                <span>Total Serviços:</span>
+                <span>{formatCurrency(totalServicos)}</span>
+              </div>
               {totalDesconto > 0 && (
-                <div className="flex justify-between text-[11px]">
-                  <span>Desconto:</span>
+                <div className="flex justify-between py-1 text-sm text-emerald-600 font-medium border-t border-gray-200 mt-1">
+                  <span>Total Desconto:</span>
                   <span>- {formatCurrency(totalDesconto)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-sm">
-                <span>TOTAL:</span>
+              <div className="flex justify-between text-xl font-black mt-2 pt-2 border-t-2 border-black">
+                <span>TOTAL GERAL:</span>
                 <span>{formatCurrency(totalGeral)}</span>
               </div>
             </div>
-            <div className="text-center text-[10px] mt-4">
-              <p>Obrigado pela preferência!</p>
+          </div>
+
+          {/* Observations */}
+          {form.getValues('observacao') && (
+            <div className="mb-8 border border-gray-200 rounded p-4 bg-yellow-50/50">
+              <h3 className="font-bold mb-1 text-xs uppercase text-gray-500">
+                Observações:
+              </h3>
+              <p className="whitespace-pre-wrap text-sm">
+                {form.getValues('observacao')}
+              </p>
+            </div>
+          )}
+
+          {/* Signatures */}
+          <div className="mt-auto grid grid-cols-2 gap-16 text-center text-sm pt-8">
+            <div>
+              <div className="border-t border-black mb-2" />
+              <p className="font-medium">{empresa.nome}</p>
+              <p className="text-xs text-gray-500">Responsável Técnico</p>
+            </div>
+            <div>
+              <div className="border-t border-black mb-2" />
+              <p className="font-medium">
+                {form.getValues('clienteNome') || 'Cliente'}
+              </p>
+              <p className="text-xs text-gray-500">Assinatura do Cliente</p>
             </div>
           </div>
-        ) : (
-          // A4 LAYOUT (OS & ORÇAMENTO)
-          <div className="p-8 w-[210mm] min-h-[297mm] relative flex flex-col">
-            {/* Header */}
-            <div className="flex justify-between items-start mb-6 border-b-2 border-black pb-4">
-              <div className="flex gap-4 items-center">
-                {empresa.logo && (
-                  <img
-                    src={empresa.logo}
-                    alt="Logo"
-                    className="h-20 w-auto object-contain"
-                  />
-                )}
-                <div>
-                  <h1 className="text-2xl font-bold uppercase">
-                    {empresa.nome}
-                  </h1>
-                  <p className="text-sm text-gray-600 max-w-xs leading-snug">
-                    {empresa.endereco}
-                  </p>
-                  <p className="text-sm font-bold mt-1">
-                    CNPJ: {empresa.cnpj || '00.000.000/0000-00'}
-                  </p>
-                  <p className="text-sm font-bold">{empresa.telefone}</p>
-                </div>
-              </div>
-              <div className="text-right flex flex-col items-end">
-                <h2 className="text-3xl font-black uppercase tracking-wider mb-2">
-                  {printMode === 'orcamento' ? 'ORÇAMENTO' : 'ORDEM DE SERVIÇO'}
-                </h2>
-                <div className="bg-gray-100 p-2 rounded w-full text-right mb-2">
-                  <p className="text-lg font-bold">
-                    Nº {existing ? formatContractId(existing.numeroOS) : '---'}
-                  </p>
-                  <p className="text-xs">
-                    Emissão: {new Date().toLocaleDateString()}
-                  </p>
-                </div>
-                {/* Generated QR Code for website */}
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://www.fenixmoto.com.br`}
-                  alt="QR Code"
-                  className="w-20 h-20 border border-gray-200"
-                />
-                <span className="text-[10px] text-gray-500 mt-1">
-                  Acesse nosso site
-                </span>
-              </div>
-            </div>
 
-            {/* Info Section */}
-            <div className="grid grid-cols-2 gap-8 mb-6 text-sm bg-gray-50 p-4 rounded border border-gray-200">
-              <div>
-                <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
-                  Dados do Cliente
-                </h3>
-                <p className="py-0.5">
-                  <span className="font-semibold w-20 inline-block">Nome:</span>{' '}
-                  {form.getValues('clienteNome')}
-                </p>
-                <p className="py-0.5">
-                  <span className="font-semibold w-20 inline-block">Tel:</span>{' '}
-                  {form.getValues('clienteTelefone')}
-                </p>
-              </div>
-              <div>
-                <h3 className="font-bold border-b border-gray-400 mb-2 uppercase text-gray-700">
-                  Dados do Veículo
-                </h3>
-                <p className="py-0.5">
-                  <span className="font-semibold w-20 inline-block">
-                    Modelo:
-                  </span>{' '}
-                  {form.getValues('motoModelo')}
-                </p>
-                <p className="py-0.5">
-                  <span className="font-semibold w-20 inline-block">
-                    Placa:
-                  </span>{' '}
-                  <span className="uppercase font-mono bg-gray-200 px-1 rounded">
-                    {form.getValues('motoPlaca')}
-                  </span>
-                </p>
-                <p className="py-0.5">
-                  <span className="font-semibold w-20 inline-block">Ano:</span>{' '}
-                  {form.getValues('motoAno') || '-'}
-                </p>
-              </div>
-            </div>
-
-            {/* Items Table */}
-            <div className="flex-1">
-              <table className="w-full mb-6 text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-100 border-y border-black">
-                    <th className="text-left py-2 px-2 font-bold uppercase text-xs">
-                      Tipo
-                    </th>
-                    <th className="text-left py-2 px-2 font-bold uppercase text-xs">
-                      Descrição
-                    </th>
-                    <th className="text-center py-2 px-2 font-bold uppercase text-xs w-16">
-                      Qtd
-                    </th>
-                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-24">
-                      V. Unit
-                    </th>
-                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-20">
-                      Desc(%)
-                    </th>
-                    <th className="text-right py-2 px-2 font-bold uppercase text-xs w-28">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {watchedItens.map((item, idx) => (
-                    <tr
-                      key={idx}
-                      className="border-b border-gray-200 hover:bg-gray-50"
-                    >
-                      <td className="py-2 px-2 capitalize text-xs text-gray-500">
-                        {item.tipo}
-                      </td>
-                      <td className="py-2 px-2 font-medium">{item.nome}</td>
-                      <td className="text-center py-2 px-2">
-                        {item.quantidade}
-                      </td>
-                      <td className="text-right py-2 px-2 text-gray-600">
-                        {formatCurrency(item.valorUnitario)}
-                      </td>
-                      <td className="text-right py-2 px-2 text-gray-600">
-                        {item.desconto > 0 ? `${item.desconto}%` : '-'}
-                      </td>
-                      <td className="text-right py-2 px-2 font-bold">
-                        {formatCurrency(item.valorTotal)}
-                      </td>
-                    </tr>
-                  ))}
-                  {watchedItens.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="py-8 text-center text-gray-400 italic"
-                      >
-                        Nenhum item adicionado.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Totals Section */}
-            <div className="flex justify-end mb-8">
-              <div className="w-1/2 bg-gray-50 p-4 rounded border border-gray-200">
-                <div className="flex justify-between py-1 text-sm text-gray-600">
-                  <span>Total Peças:</span>
-                  <span>{formatCurrency(totalPecas)}</span>
-                </div>
-                <div className="flex justify-between py-1 text-sm text-gray-600">
-                  <span>Total Serviços:</span>
-                  <span>{formatCurrency(totalServicos)}</span>
-                </div>
-                {totalDesconto > 0 && (
-                  <div className="flex justify-between py-1 text-sm text-emerald-600 font-medium border-t border-gray-200 mt-1">
-                    <span>Total Desconto:</span>
-                    <span>- {formatCurrency(totalDesconto)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-xl font-black mt-2 pt-2 border-t-2 border-black">
-                  <span>TOTAL GERAL:</span>
-                  <span>{formatCurrency(totalGeral)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Observations */}
-            {form.getValues('observacao') && (
-              <div className="mb-8 border border-gray-200 rounded p-4 bg-yellow-50/50">
-                <h3 className="font-bold mb-1 text-xs uppercase text-gray-500">
-                  Observações:
-                </h3>
-                <p className="whitespace-pre-wrap text-sm">
-                  {form.getValues('observacao')}
-                </p>
-              </div>
-            )}
-
-            {/* Signatures */}
-            <div className="mt-auto grid grid-cols-2 gap-16 text-center text-sm pt-8">
-              <div>
-                <div className="border-t border-black mb-2" />
-                <p className="font-medium">{empresa.nome}</p>
-                <p className="text-xs text-gray-500">Responsável Técnico</p>
-              </div>
-              <div>
-                <div className="border-t border-black mb-2" />
-                <p className="font-medium">
-                  {form.getValues('clienteNome') || 'Cliente'}
-                </p>
-                <p className="text-xs text-gray-500">Assinatura do Cliente</p>
-              </div>
-            </div>
-
-            {/* Footer / Recycling Message */}
-            <div className="mt-8 pt-4 border-t border-gray-200 text-center flex flex-col items-center gap-1 text-xs text-gray-400">
-              <div className="flex items-center gap-1 text-green-700/80 font-medium">
-                <Recycle className="h-3 w-3" />
-                <span>
-                  Por favor, descarte este papel de forma consciente. Recicle.
-                </span>
-              </div>
-              <p>Gerado por MotoFin System • {empresa.website}</p>
+          {/* Footer / Recycling Message */}
+          <div className="mt-8 pt-4 border-t border-gray-200 text-center flex flex-col items-center gap-1 text-xs text-gray-400">
+            <div className="flex items-center gap-1 text-green-700/80 font-medium">
+              <Recycle className="h-3 w-3" />
+              <span>
+                Por favor, descarte este papel de forma consciente. Recicle.
+              </span>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* 
@@ -626,40 +541,9 @@ export default function OrdemServicoForm() {
             >
               <MessageCircle className="h-5 w-5" />
             </Button>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline">
-                  <Printer className="mr-2 h-4 w-4" /> Imprimir
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56" align="end">
-                <div className="flex flex-col gap-1">
-                  <Button
-                    variant="ghost"
-                    className="justify-start font-normal"
-                    onClick={() => handlePrint('os')}
-                  >
-                    <FileOutput className="mr-2 h-4 w-4" /> Ordem de Serviço
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="justify-start font-normal"
-                    onClick={() => handlePrint('orcamento')}
-                  >
-                    <FileText className="mr-2 h-4 w-4" /> Orçamento
-                  </Button>
-                  <Separator className="my-1" />
-                  <Button
-                    variant="ghost"
-                    className="justify-start font-normal"
-                    onClick={() => handlePrint('cupom')}
-                  >
-                    <Receipt className="mr-2 h-4 w-4" /> Cupom (80mm)
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="mr-2 h-4 w-4" /> Imprimir
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="pt-6">

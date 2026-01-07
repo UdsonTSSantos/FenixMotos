@@ -27,12 +27,13 @@ export default function Clientes() {
 
   const exportToExcel = () => {
     // Generate CSV content
-    const headers = ['Nome', 'Telefone/Celular', 'Email', 'Gênero']
+    const headers = ['Nome', 'Telefone/Celular', 'Email', 'Cidade', 'Estado']
     const rows = filteredClientes.map((c) => [
       c.nome,
       c.telefone,
       c.email,
-      c.genero || '-',
+      c.cidade || '',
+      c.estado || '',
     ])
 
     const csvContent = [
@@ -72,7 +73,7 @@ export default function Clientes() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome ou CPF..."
+            placeholder="Buscar por nome..."
             className="pl-8"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -85,10 +86,9 @@ export default function Clientes() {
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
-              <TableHead>CPF</TableHead>
               <TableHead>Telefone</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Gênero</TableHead>
+              <TableHead>Cidade/UF</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -96,11 +96,11 @@ export default function Clientes() {
             {filteredClientes.map((cliente) => (
               <TableRow key={cliente.id}>
                 <TableCell className="font-medium">{cliente.nome}</TableCell>
-                <TableCell>{cliente.cpf}</TableCell>
                 <TableCell>{cliente.telefone}</TableCell>
                 <TableCell>{cliente.email}</TableCell>
-                <TableCell className="capitalize">
-                  {cliente.genero || '-'}
+                <TableCell>
+                  {cliente.cidade}
+                  {cliente.estado && `/${cliente.estado}`}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" asChild>
@@ -114,7 +114,7 @@ export default function Clientes() {
             {filteredClientes.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={5}
                   className="text-center h-24 text-muted-foreground"
                 >
                   Nenhum cliente encontrado.
